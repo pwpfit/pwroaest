@@ -55,14 +55,17 @@ function [beta,V,gamma,s1,s2,si,iter] = pwroaest(f1,f2,x,phi,roaopts)
 
 % information from options
 p  = roaopts.p;
-zV = roaopts.zV ;
-z1 = roaopts.z1 ;
-z2 = roaopts.z2 ;
-L2 = roaopts.L2 ;
-L1 = roaopts.L1 ;
-Q  = roaopts.Q ;
+zV = roaopts.zV;
+z1 = roaopts.z1;
+z2 = roaopts.z2;
+zi = roaopts.zi;
+L2 = roaopts.L2;
+L1 = roaopts.L1;
+Q  = roaopts.Q;
 NstepBis = roaopts.NstepBis;
 sopts = roaopts.sosopts;
+gopts = roaopts.gsosopts;
+gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 display = roaopts.display;
@@ -77,7 +80,7 @@ iter= struct('V',c0,'beta',c0,'gamma',c0,'s1',c0,'s2',c0,'time',c0);
 
 
 %% Run V-s iteration
-fprintf('\n---------------Beginning V-s iteration\n');
+fprintf('\n---------------Beginning piecewise V-s iteration\n');
 biscount = 0;
 for i1=1:NstepBis
     tic;
@@ -121,7 +124,7 @@ for i1=1:NstepBis
 %     [gbnds,s2]=pcontain(jacobian(V,x)*f+L2,V,z2,gopts);
     [gbnds,s2,si] = pwpcontain(jacobian(V,x)*f1+L2,  ...
                                jacobian(V,x)*f2+L2,  ...
-                               V, phi, z2, zi, gopts ...
+                               V, phi, z2, zi, L2, gopts ...
 	);
     if isempty(gbnds)
         if strcmp(display,'on')
@@ -164,4 +167,12 @@ if strcmp(display,'on')
     fprintf('---------------Ending V-s iteration.\n');
 end
     
+%% Outputs
+[~, idx] = max([iter.beta]);
+beta  = iter(idx).beta;
+V     = iter(idx).V;
+s1    = iter(idx).s1;
+s2    = iter(idx).s2;
+gamma = iter(idx).gamma;
+
 end

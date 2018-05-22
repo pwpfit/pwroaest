@@ -1,7 +1,7 @@
-function [gbnds,sout1,sout2,info] = pwpcontain(pa,pb,p2,phi,z,zi,opts)
+function [gbnds,sout1,sout2,info] = pwpcontain(pa,pb,p2,phi,z,zi,L,opts)
 % Maximizes g subject to the piecewise set containment constraint
 %   {x: p2(x) <= g} intersecting {phi(x) <= 0} is subset of {x: pa(x) <= 0}
-%   {x: p2(x) <= g} intersecting {phi(x) >= 0} is subset of {x: pb(x) <= 0}
+%   {x: p2(x) <= g} intersecting {phi(x) > 0} is subset of {x: pb(x) <= 0}
 %
 %% Usage & description
 %
@@ -44,6 +44,7 @@ if ~exist('opts','var') || isempty(opts)
     opts = gsosoptions;
 end
 
+
 %% Call GSOSOPT
 % to solve:
 %       max g such that
@@ -67,8 +68,8 @@ sosc(2) = s2 >= 0;
 sosc(3) = si1 >= 0;
 sosc(4) = si2 >= 0;
 
-sosc(5) = (p2*s1 - pa) + t*s1 + phi*si1 >= 0;
-sosc(6) = (p2*s2 - pb) + t*s2 - phi*si2 >= 0;
+sosc(5) = (p2*s1 - pa) + t*s1 +  phi   *si1 >= 0;
+sosc(6) = (p2*s2 - pb) + t*s2 - (phi-L)*si2 >= 0;
 
 gopts = opts;
 gopts.minobj = -opts.maxobj;
