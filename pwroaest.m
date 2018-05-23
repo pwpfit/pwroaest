@@ -110,6 +110,41 @@ for i1=1:NstepBis
     end
 
     %======================================================================
+    % Pre Gamma Step: Solve the problem
+    % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
+    %======================================================================
+    gopts.maxobj = gammamax;
+    [gbnds,s2] = pcontain(jacobian(V,x)*f1+L2,V,z2,gopts);
+    if isempty(gbnds)
+        if strcmp(display,'on')
+            fprintf('pre gamma step infeasible at iteration = %d\n',i1);
+        end
+        break;
+    end
+    gpre = gbnds(1)
+    
+    %======================================================================
+    % Min Gamma Step: Solve the problem
+    % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
+    %======================================================================
+    gopts.maxobj = gammamax;
+    [gbnds,si] = pcontain(phi,V,zi,gopts);
+    if isempty(gbnds)
+        if strcmp(display,'on')
+            fprintf('min gamma step infeasible at iteration = %d\n',i1);
+        end
+        break;
+    end
+    gmin = gbnds(1)
+    
+    if gpre <= gmin
+        g  = gpre;
+        si = polynomial([]);
+        if strcmp(display,'on')
+            fprintf('Local polynomial problem at iteration = %d\n',i1);
+        end
+    else
+    %======================================================================
     % Gamma Step: Solve the following problem
     % {x:V(x) <= gamma} intersects {x:phi(x) <= 0} is contained 
     % in {x:grad(V)*f1 < 0}
@@ -120,6 +155,7 @@ for i1=1:NstepBis
     % max gamma subject to
     %     -[grad(V)*f1/2 + (gamma - V)*s2 -/+ phi*si] in SOS, s2, si in SOS
     %======================================================================
+    gopts.minobj = gmin;
     gopts.maxobj = gammamax;
 %     [gbnds,s2]=pcontain(jacobian(V,x)*f+L2,V,z2,gopts);
     [gbnds,s2,si] = pwpcontain(jacobian(V,x)*f1+L2,  ...
@@ -133,6 +169,7 @@ for i1=1:NstepBis
         break;
     end
     g = gbnds(1);
+    end
 
     %======================================================================
     % Beta Step: Solve the following problem
