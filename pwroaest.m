@@ -1,4 +1,4 @@
-function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,x,phi,roaopts)
+function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,phi,x,roaopts)
 % Estimates lower bound of piece-wise region of attraction.
 %
 %% Usage & description
@@ -28,8 +28,8 @@ function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,x,phi,roaopts)
 % Inputs:
 %       -f1:  first polynomial vector field
 %       -f2:  second polynomial vector field
-%       -x:   state-space vector as PVAR
 %       -phi: boundary condition (scalar field)
+%       -x:   state-space vector as PVAR
 %       -ropts: options for piece-wise ROA estimation; see PWROAOPTIONS.
 %
 % Outputs:
@@ -46,11 +46,11 @@ function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,x,phi,roaopts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-05-22
+% * Changed:    2018-05-23
 %
 %% See also
 %
-% See ROAEST, PWROAOPTIONS
+% See ROAEST, PWROAOPTIONS, PCONTAIN, PWPCONTAIN
 %%
 
 % information from options
@@ -98,12 +98,20 @@ for i1=1:NstepBis
         else
             V = Vin;
         end
-    else
-%         [V,~] = roavstep(f,p,x,zV,b,g,s1,s2,L1,L2,sopts);
-        V = [];
+    elseif g < gmin
+        % local V-s problem
+        [V,~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
         if isempty(V)
             if strcmp(display,'on')
-                fprintf('V-step infeasible at iteration = %d\n',i1);
+                fprintf('local V-step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+    else
+        [V,~] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,L1,L2,sopts);
+        if isempty(V)
+            if strcmp(display,'on')
+                fprintf('common V-step infeasible at iteration = %d\n',i1);
             end
             break;
         end
@@ -114,7 +122,7 @@ for i1=1:NstepBis
     % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
     %======================================================================
     gopts.maxobj = gammamax;
-    [gbnds,s2] = pcontain(jacobian(V,x)*f1+L2,V,z2,gopts);
+    [gbnds,s] = pcontain(jacobian(V,x)*f1+L2,V,z2,gopts);
     if isempty(gbnds)
         if strcmp(display,'on')
             fprintf('pre gamma step infeasible at iteration = %d\n',i1);
@@ -128,7 +136,7 @@ for i1=1:NstepBis
     % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
     %======================================================================
     gopts.maxobj = gammamax;
-    [gbnds,si] = pcontain(phi,V,[],gopts);
+    [gbnds,~] = pcontain(phi,V,[],gopts);
     if isempty(gbnds)
         if strcmp(display,'on')
             fprintf('min gamma step infeasible at iteration = %d\n',i1);
@@ -138,51 +146,56 @@ for i1=1:NstepBis
     gmin = gbnds(1)
     
     if gpre <= gmin
+        % estimated region of attraction does not reach boundary
         g  = gpre;
-        si = polynomial([]);
+        si = polynomial;
         if strcmp(display,'on')
             fprintf('Local polynomial problem at iteration = %d\n',i1);
         end
     else
-    %======================================================================
-    % Gamma Step: Solve the following problems
-    % {x:V(x) <= gamma1} intersects {x:phi(x) <= 0} is contained 
-    % in {x:grad(V)*f1 < 0}
-    % 
-    % and
-    % {x:V(x) <= gamma2} intersects {x:phi(x) >= 0} is contained 
-    % in {x:grad(V)*f2 < 0}
-    %
-    % max gamma1/2 subject to
-    %     -[grad(V)*f1/2 + (gamma - V)*s2 -/+ phi*si] in SOS, s2, si in SOS
-    %======================================================================
-%     gopts.minobj = gmin;
-    gopts.maxobj = gammamax;
-%     [gbnds,s2]=pcontain(jacobian(V,x)*f+L2,V,z2,gopts);
-    [gbnds,s1,si1] = pwpcontain(jacobian(V,x)*f1+L2,  ...
-                                V, phi, z2, zi, gopts ...
-	);
-    if isempty(gbnds)
-        if strcmp(display,'on')
-            fprintf('gamma 1 step infeasible at iteration = %d\n',i1);
+        %==================================================================
+        % Gamma 1 Step: Solve the following problems
+        % {x:V(x) <= gamma1} intersects {x:phi(x) <= 0} is contained 
+        % in {x:grad(V)*f1 < 0}
+        % 
+        % max gamma1 subject to
+        %     -[grad(V)*f1 + (gamma1 - V)*s - phi*si] in SOS,  s,si in SOS
+        %==================================================================
+        gopts.maxobj = gammamax;
+        [gbnds,s1,si1] = pwpcontain(jacobian(V,x)*f1+L2,  ...
+                                    V, phi, z2, zi, gopts ...
+        );
+        if isempty(gbnds)
+            if strcmp(display,'on')
+                fprintf('gamma 1 step infeasible at iteration = %d\n',i1);
+            end
+            break;
         end
-        break;
-    end
-    g1 = gbnds(1)
-    
-    gopts.maxobj = gammamax;
-    [gbnds,s2,si2] = pwpcontain(jacobian(V,x)*f2+L2,  ...
-                                V, -phi+L2, z2, zi, gopts ...
-    );
-    if isempty(gbnds)
-        if strcmp(display,'on')
-            fprintf('gamma 2 step infeasible at iteration = %d\n',i1);
+        g1 = gbnds(1)
+
+        %==================================================================
+        % Gamma 2 Step: Solve the following problems
+        % {x:V(x) <= gamma2} intersects {x:phi(x) > 0} is contained 
+        % in {x:grad(V)*f2 < 0}
+        %
+        % max gamma2 subject to
+        %     -[grad(V)*f2 + (gamma - V)*s + phi*si] in SOS,  s,si in SOS
+        %==================================================================
+        gopts.maxobj = gammamax;
+        [gbnds,s2,si2] = pwpcontain(jacobian(V,x)*f2+L2,  ...
+                                    V, -phi+L2, z2, zi, gopts ...
+        );
+        if isempty(gbnds)
+            if strcmp(display,'on')
+                fprintf('gamma 2 step infeasible at iteration = %d\n',i1);
+            end
+            break;
         end
-        break;
-    end
-    g2 = gbnds(1)
-    
-    g = min(g1,g2);
+        g2 = gbnds(1)
+
+        s  = [s1  s2 ];
+        si = [si1 si2];
+        g  = min(g1,g2);
     end
 
     %======================================================================
@@ -207,10 +220,10 @@ for i1=1:NstepBis
     end
     iter(i1).V     = V;
     iter(i1).beta  = b;
-    iter(i1).gamma = g;
+    iter(i1).gamma = [g gpre gmin];
     iter(i1).s0    = s0;
-    iter(i1).s     = [s1  s2 ];
-    iter(i1).si    = [si1 si2];
+    iter(i1).s     = s;
+    iter(i1).si    = si;
     iter(i1).time  = toc;
     biscount = biscount+1;
 end
@@ -219,12 +232,13 @@ if strcmp(display,'on')
 end
     
 %% Outputs
+iter(biscount+1:end) = [];
 [~, idx] = max([iter.beta]);
 beta  = iter(idx).beta;
 V     = iter(idx).V;
 s0    = iter(idx).s0;
 s2    = iter(idx).s;
 si    = iter(idx).si;
-gamma = iter(idx).gamma;
+gamma = iter(idx).gamma(1);
 
 end

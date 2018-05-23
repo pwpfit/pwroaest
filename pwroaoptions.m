@@ -42,7 +42,7 @@ properties
 end
 
 methods
-    function opt = pwroaoptions(f1, f2, x, phi, varargin)
+    function opt = pwroaoptions(f1, f2, phi, x, varargin)
         opt@roaoptions(f1, x, varargin{:});
         
         opt.f1  = f1;

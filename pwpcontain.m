@@ -28,7 +28,7 @@ function [gbnds,sout1,sout2,info] = pwpcontain(pa,p2,phi,z,zi,opts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-05-22
+% * Changed:    2018-05-23
 %
 %% See also
 %
@@ -79,6 +79,6 @@ if ~isempty(info.tbnds)
     sout2 = subs(si1, dopt);
 else
     gbnds = [];
-    sout1 = polynomial([]);
-    sout2 = polynomial([]);
+    sout1 = polynomial;
+    sout2 = polynomial;
 end
