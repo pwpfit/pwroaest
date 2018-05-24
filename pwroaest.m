@@ -92,13 +92,15 @@ for i1=1:NstepBis
     % V-L1 in SOS
     %======================================================================
     if i1==1
+        g = 1;
+        
         if isempty(Vin)
             % Construct Lyap function from linearization
             V=linstab(f1,x,Q);
         else
             V = Vin;
         end
-    elseif g < gmin
+    elseif g <= gmin
         % local V-s problem
         [V,~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
         if isempty(V)
@@ -116,7 +118,7 @@ for i1=1:NstepBis
             break;
         end
     end
-
+    
     %======================================================================
     % Pre Gamma Step: Solve the problem
     % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
@@ -198,6 +200,13 @@ for i1=1:NstepBis
         g  = min(g1,g2);
     end
 
+    if g > .99*gammamax
+        if strcmp(display,'on')
+            fprintf('result of gamma step close to maximum (99%%) at iteration = %d\n',i1);
+        end
+        break;
+    end 
+    
     %======================================================================
     % Beta Step: Solve the following problem
     % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
@@ -213,6 +222,10 @@ for i1=1:NstepBis
         break;
     end
     b = bbnds(1);
+    
+    if b > .99*betamax && strcmp(display,'on')
+        fprintf('warning: result of beta step close to maximum (99%%) at iteration = %d\n',i1);
+    end
     
     % Print results and store iteration data
     if strcmp(display,'on')
