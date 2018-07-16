@@ -97,11 +97,13 @@ for i1=1:NstepBis
     if i1==1
         g = 1;
         
-        if isempty(Vin)
-            % Construct Lyap function from linearization
+        if ~isempty(Vin)
+            V = Vin;
+        elseif phi0 < 0
+            % Construct Lyap function from linearization of LHS function
             V=linstab(f1,x,Q);
         else
-            V = Vin;
+            V=pwlinstab(f1,f2,phi,x);
         end
     elseif g <= gmin
         % local V-s problem
