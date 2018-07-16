@@ -3,7 +3,7 @@ function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,phi,x,roaopts)
 %
 %% Usage & description
 %
-%   [beta,V,gamma,s1,s2,si,iter] = pwroaest(f1, f2, x, phi, ropts)
+%   [beta,V,gamma,s1,s2,si,iter] = pwroaest(f1, f2, phi, x, ropts)
 %
 % Estimates the lower bound of the region-of-attraction of the piecewise
 % polynomial vector field
@@ -78,6 +78,9 @@ Nsteps = NstepBis;
 c0 = cell(Nsteps,1);
 iter= struct('V',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'time',c0);
 
+% boundary condition at origin
+phi0 = double(subs(phi, x, zeros(size(x))));
+
 
 %% Run V-s iteration
 fprintf('\n---------------Beginning piecewise V-s iteration\n');
@@ -119,6 +122,7 @@ for i1=1:NstepBis
         end
     end
     
+    if phi0 < 0
     %======================================================================
     % Pre Gamma Step: Solve the problem
     % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
@@ -147,7 +151,14 @@ for i1=1:NstepBis
     end
     gmin = gbnds(1)
     
-    if gpre <= gmin
+    else
+        % origin at boundary
+        % no local problem possible
+        gpre = inf;
+        gmin = 0;
+    end
+    
+    if gpre <= gmin && phi0 < 0
         % estimated region of attraction does not reach boundary
         g  = gpre;
         si = polynomial;

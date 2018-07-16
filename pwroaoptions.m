@@ -3,7 +3,7 @@ classdef pwroaoptions < roaoptions
 %
 %% Usage & description
 %
-%   opts = pwroaoptions(f1, f2, x, phi, ...)
+%   opts = pwroaoptions(f1, f2, phi, x, ...)
 %
 % with inputs
 %       -f1:  first polynomial vector field
