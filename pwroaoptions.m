@@ -55,7 +55,7 @@ methods
         
         if isempty(opt.zi)
             % XXX More intelligent selection?
-            opt.zi =  monomials(opt.xi, 1:2);
+            opt.zi =  monomials(opt.xi, 0:2);
         end
     end
     
