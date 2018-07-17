@@ -56,7 +56,7 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 
 % information from options
 p  = roaopts.p;
-zV = roaopts.zV;
+zV = roaopts.zVi;
 z1 = roaopts.z1;
 z2 = roaopts.z2;
 zi = roaopts.zi;
@@ -70,9 +70,9 @@ gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 display = roaopts.display;
-Vin = roaopts.Vin;
+Vin = roaopts.Vi0;
 
-Vdeg = zV.maxdeg;
+% Vdeg = zV.maxdeg;
 Nsteps = NstepBis;
 
 % initialize storage
@@ -82,6 +82,8 @@ iter= struct('V',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'time',c0);
 % boundary condition at origin
 phi0 = double(subs(phi, x, zeros(size(x))));
 
+% Lyapunov functions
+V = cell(size(zV));
 
 %% Run V-s iteration
 fprintf('\n---------------Beginning piecewise V-s iteration\n');
@@ -102,22 +104,29 @@ for i1=1:NstepBis
             V = Vin;
         elseif phi0 < 0
             % Construct Lyap function from linearization of LHS function
-            V=linstab(f1,x,Q);
+            V{1}=linstab(f1,x,Q);
         else
-            V=pwlinstab(f1,f2,phi,x);
+            V{1}=pwlinstab(f1,f2,phi,x);
+        end
+        
+        %TODO: initialize multiple Lyapunov functions
+        if length(V) > 1
+            V{2} = V{1};
         end
     elseif g <= gmin
         % local V-s problem
-        [V,~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
-        if isempty(V)
+        [V{1},~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
+        if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
             end
             break;
+        elseif length(V) > 1
+            V{2} = V{1};
         end
     else
-        [V,~] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,L1,L2,sopts);
-        if isempty(V)
+        [V{:},~] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,L1,L2,sopts);
+        if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
             end
@@ -126,34 +135,33 @@ for i1=1:NstepBis
     end
     
     if phi0 < 0
-    %======================================================================
-    % Pre Gamma Step: Solve the problem
-    % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
-    %======================================================================
-    gopts.maxobj = gammamax;
-    [gbnds,s] = pcontain(jacobian(V,x)*f1+L2,V,z2,gopts);
-    if isempty(gbnds)
-        if strcmp(display,'on')
-            fprintf('pre gamma step infeasible at iteration = %d\n',i1);
+        %======================================================================
+        % Pre Gamma Step: Solve the problem
+        % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
+        %======================================================================
+        gopts.maxobj = gammamax;
+        [gbnds,s] = pcontain(jacobian(V{1},x)*f1+L2,V{1},z2,gopts);
+        if isempty(gbnds)
+            if strcmp(display,'on')
+                fprintf('pre gamma step infeasible at iteration = %d\n',i1);
+            end
+            break;
         end
-        break;
-    end
-    gpre = gbnds(1)
-    
-    %======================================================================
-    % Min Gamma Step: Solve the problem
-    % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
-    %======================================================================
-    gopts.maxobj = gammamax;
-    [gbnds,~] = pcontain(phi,V,[],gopts);
-    if isempty(gbnds)
-        if strcmp(display,'on')
-            fprintf('min gamma step infeasible at iteration = %d\n',i1);
+        gpre = gbnds(1)
+
+        %======================================================================
+        % Min Gamma Step: Solve the problem
+        % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
+        %======================================================================
+        gopts.maxobj = gammamax;
+        [gbnds,~] = pcontain(phi,V{1},[],gopts);
+        if isempty(gbnds)
+            if strcmp(display,'on')
+                fprintf('min gamma step infeasible at iteration = %d\n',i1);
+            end
+            break;
         end
-        break;
-    end
-    gmin = gbnds(1)
-    
+        gmin = gbnds(1)    
     else
         % origin at boundary
         % no local problem possible
@@ -178,8 +186,8 @@ for i1=1:NstepBis
         %     -[grad(V)*f1 + (gamma1 - V)*s - phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s1,si1] = pwpcontain(jacobian(V,x)*f1+L2,  ...
-                                    V, phi, z2, zi, gopts ...
+        [gbnds,s1,si1] = pwpcontain(jacobian(V{1},x)*f1+L2,  ...
+                                    V{1}, phi, z2, zi, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -198,8 +206,8 @@ for i1=1:NstepBis
         %     -[grad(V)*f2 + (gamma - V)*s + phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s2,si2] = pwpcontain(jacobian(V,x)*f2+L2,  ...
-                                    V, -phi+L2, z2, zi, gopts ...
+        [gbnds,s2,si2] = pwpcontain(jacobian(V{end},x)*f2+L2,  ...
+                                    V{end}, -phi+L2, z2, zi, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -221,21 +229,65 @@ for i1=1:NstepBis
         break;
     end 
     
-    %======================================================================
-    % Beta Step: Solve the following problem
-    % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
-    % max beta subject to
-    %                 -[(V - gamma) + (beta - p)*s1] in SOS, s1 in SOS
-    %======================================================================
-    gopts.maxobj = betamax;
-    [bbnds,s0]=pcontain(V-g,p,z1,gopts);
-    if isempty(bbnds)
-        if strcmp(display,'on')
-            fprintf('beta step infeasible at iteration = %d\n',i1);
+    if length(V) == 1 || any(gpre <= gmin)
+        %======================================================================
+        % Beta Step: Solve the following problem
+        % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
+        % max beta subject to
+        %                 -[(V - gamma) + (beta - p)*s0] in SOS, s0 in SOS
+        %======================================================================
+        gopts.maxobj = betamax;
+        [bbnds,s0]=pcontain(V{1}-g,p,z1,gopts);
+        if isempty(bbnds)
+            if strcmp(display,'on')
+                fprintf('beta step infeasible at iteration = %d\n',i1);
+            end
+            break;
         end
-        break;
+        b = bbnds(1);
+    else
+        %======================================================================
+        % Beta 1 Step: Solve the following problem
+        % {x: p(x)) <= beta1} intersects {x:phi(x) <= 0} is contained 
+        % in {x: V(x) <= gamma1}
+        % max beta subject to
+        %   -[(V - gamma1) + (beta1 - p)*s0 - phi*si] in SOS, s0,si in SOS
+        %======================================================================
+        gopts.maxobj = betamax;
+        [bbnds,sb1,si1]=pwpcontain(V{1}-g1, ...
+                                   p, phi, z1, zi, gopts ...
+        );
+        if isempty(bbnds)
+            if strcmp(display,'on')
+                fprintf('beta 1 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+        b1 = bbnds(1)
+        
+        %======================================================================
+        % Beta 2 Step: Solve the following problem
+        % {x: p(x)) <= beta2} intersects {x:phi(x) > 0} is contained 
+        % in {x: V(x) <= gamma2}
+        % max beta2 subject to
+        %   -[(V - gamma2) + (beta2 - p)*s0 + phi*si] in SOS, s0,si in SOS
+        %======================================================================
+        gopts.maxobj = betamax;
+        [bbnds,sb2,si2]=pwpcontain(V{2}-g2, ...
+                                   p, -phi+L2, z1, zi, gopts ...
+        );
+        if isempty(bbnds)
+            if strcmp(display,'on')
+                fprintf('beta 2 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+        b2 = bbnds(1)
+        
+        s0 = [sb1 sb2];
+        sj = [si1 si2];
+        b  = min(b1,b2);
     end
-    b = bbnds(1);
     
     if b > .99*betamax && strcmp(display,'on')
         fprintf('warning: result of beta step close to maximum (99%%) at iteration = %d\n',i1);
