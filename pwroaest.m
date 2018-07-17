@@ -127,10 +127,12 @@ for i1=1:NstepBis
     else
         [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,sj,L1,L2,roaopts);
         if isempty(V{1})
-            if strcmp(display,'on')
+            if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
+            elseif strcmp(display,'on')
+                fprintf('multiple V-step infeasible at iteration = %d\n',i1);
             end
-            break;
+            break;            
         end
     end
     
