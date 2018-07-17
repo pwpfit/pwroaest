@@ -105,14 +105,13 @@ for i1=1:NstepBis
         elseif phi0 < 0
             % Construct Lyap function from linearization of LHS function
             V{1}=linstab(f1,x,Q);
+            if length(V) > 1
+                V{2} = V{1};
+            end
         else
-            V{1}=pwlinstab(f1,f2,phi,x);
+            [V{:}]=pwlinstab(f1,f2,phi,x);
         end
         
-        %TODO: initialize multiple Lyapunov functions
-        if length(V) > 1
-            V{2} = V{1};
-        end
     elseif g <= gmin
         % local V-s problem
         [V{1},~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
@@ -125,7 +124,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,sj,L1,L2,roaopts);
+        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,b,[g1 g2],s0,s,si,sj,L1,L2,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);

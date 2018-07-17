@@ -53,6 +53,7 @@ varargout = cell(1,nargout);
 
 if length(z) == 1
     % common Lyapunov function
+    gamma = min(gamma);
     
     % Lyapunov decision variable
     [V,c] = polydecvar('c',z{1});
@@ -103,17 +104,17 @@ else
     sosconstr(2) = V2 >= L1;
     
     % {x: p(x) <= b} intersects {x: phi(x) <= 0} is contained in {x: V1(x) <= g}
-    sosconstr(3) = -((V1-gamma) + s0(1)*(beta-p) - sj(1)*phi)      >= 0;
+    sosconstr(3) = -((V1-gamma(1)) + s0(1)*(beta-p) - sj(1)*phi)      >= 0;
     % {x: p(x) <= b} intersects {x: phi(x) > 0} is contained in {x: V2(x) <= g}
-    sosconstr(4) = -((V2-gamma) + s0(2)*(beta-p) + sj(2)*(phi-L2)) >= 0;
+    sosconstr(4) = -((V2-gamma(2)) + s0(2)*(beta-p) + sj(2)*(phi-L2)) >= 0;
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     gradV1 = jacobian(V1,x);
     gradV2 = jacobian(V2,x);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(5) = -(gradV1*f1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+    sosconstr(5) = -(gradV1*f1 + L2 + s(1)*(gamma(1)-V1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(6) = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+    sosconstr(6) = -(gradV2*f2 + L2 + s(2)*(gamma(2)-V2) + si(2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
     sosconstr(7) = -((V1-V2) - ri(1)*phi + ri(2)*phi) >= 0;
