@@ -125,7 +125,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:},~] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,L1,L2,sopts);
+        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,b,g,s0,s,si,sj,L1,L2,roaopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -173,6 +173,7 @@ for i1=1:NstepBis
         % estimated region of attraction does not reach boundary
         g  = gpre;
         si = polynomial;
+        sj = polynomial;
         if strcmp(display,'on')
             fprintf('Local polynomial problem at iteration = %d\n',i1);
         end
@@ -245,6 +246,8 @@ for i1=1:NstepBis
             break;
         end
         b = bbnds(1);
+        
+        sj = polynomial;
     else
         %======================================================================
         % Beta 1 Step: Solve the following problem
@@ -254,7 +257,7 @@ for i1=1:NstepBis
         %   -[(V - gamma1) + (beta1 - p)*s0 - phi*si] in SOS, s0,si in SOS
         %======================================================================
         gopts.maxobj = betamax;
-        [bbnds,sb1,si1]=pwpcontain(V{1}-g1, ...
+        [bbnds,sb1,sj1]=pwpcontain(V{1}-g1, ...
                                    p, phi, z1, zi, gopts ...
         );
         if isempty(bbnds)
@@ -273,7 +276,7 @@ for i1=1:NstepBis
         %   -[(V - gamma2) + (beta2 - p)*s0 + phi*si] in SOS, s0,si in SOS
         %======================================================================
         gopts.maxobj = betamax;
-        [bbnds,sb2,si2]=pwpcontain(V{2}-g2, ...
+        [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
                                    p, -phi+L2, z1, zi, gopts ...
         );
         if isempty(bbnds)
@@ -285,7 +288,7 @@ for i1=1:NstepBis
         b2 = bbnds(1)
         
         s0 = [sb1 sb2];
-        sj = [si1 si2];
+        sj = [sj1 sj2];
         b  = min(b1,b2);
     end
     
