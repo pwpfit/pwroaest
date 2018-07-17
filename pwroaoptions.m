@@ -39,6 +39,10 @@ properties
     phi;
     xi;
     zi;
+    %zV  -- inherited from ROAOPTIONS
+    %Vin -- inherited from ROAOPTIONS
+    zVi;
+    Vi0;
 end
 
 methods
@@ -56,6 +60,35 @@ methods
         if isempty(opt.zi)
             % XXX More intelligent selection?
             opt.zi =  monomials(opt.xi, 0:2);
+        end
+        
+        if isempty(opt.zVi)
+            opt.zVi = opt.zV;
+        end
+        
+        if isempty(opt.Vi0) && ~isempty(opt.Vin)
+            opt.Vi0 = {opt.Vin};
+        end
+    end
+    
+    % Set: zV
+    function opt = set.zVi(opt,value)
+        if ismonom(value)
+            opt.zVi = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1})
+            opt.zVi = value;
+        else
+            error('zVi must be a non-empty cell of vectors of monomials.');
+        end
+    end
+
+
+    % Set: Vin
+    function opt = set.Vi0(opt,value)
+        if iscell(value) && ~isempty(value) && isa(value{1},'polynomial')
+            opt.Vi0 = value;
+        else
+            error('Lyapunov functions must be polynomials.');
         end
     end
     
