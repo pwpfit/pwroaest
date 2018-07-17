@@ -1,9 +1,10 @@
-function [beta,V,gamma,s0,s2,si,iter] = pwroaest(f1,f2,phi,x,roaopts)
+function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 % Estimates lower bound of piece-wise region of attraction.
 %
 %% Usage & description
 %
-%   [beta,V,gamma,s1,s2,si,iter] = pwroaest(f1, f2, phi, x, ropts)
+%   [beta,V,gamma,iter] = pwroaest(f1, f2, phi, x, ropts)
+%   [beta,V,gamma,s1,s2,si,iter] = pwroaest(...)
 %
 % Estimates the lower bound of the region-of-attraction of the piecewise
 % polynomial vector field
@@ -156,11 +157,11 @@ for i1=1:NstepBis
     else
         % origin at boundary
         % no local problem possible
-        gpre = inf;
-        gmin = 0;
+        gpre = [];
+        gmin = [];
     end
     
-    if gpre <= gmin && phi0 < 0
+    if gpre <= gmin
         % estimated region of attraction does not reach boundary
         g  = gpre;
         si = polynomial;
@@ -266,5 +267,10 @@ s0    = iter(idx).s0;
 s2    = iter(idx).s;
 si    = iter(idx).si;
 gamma = iter(idx).gamma(1);
+
+if nargout <= 4
+    varargout = {iter};
+else
+    varargout = {s0,s2,si,iter};
 
 end
