@@ -86,14 +86,15 @@ else
     [V2,P2] = sosdecvar('p2', x);
     
     % continuity decision variables
-    r1 = sosdecvar('c1', x);
-    r2 = sosdecvar('c2', x);
-    r3 = sosdecvar('c3', x);
-    r4 = sosdecvar('c4', x);
+    z = monomials(x, 0:2);
+    r1 = sosdecvar('c1', z);
+    r2 = sosdecvar('c2', z);
+    r3 = sosdecvar('c3', z);
+    r4 = sosdecvar('c4', z);
     
     sosc = polyconstr;
-    sosc(1) = x'*(A1'*P1 + P1*A1)*x - phi <= -x'*Q*x;
-    sosc(2) = x'*(A2'*P2 + P2*A2)*x + phi <= -x'*Q*x;
+    sosc(1) = x'*(A1'*P1 + P1*A1)*x <= -x'*Q*x;
+    sosc(2) = x'*(A2'*P2 + P2*A2)*x <= -x'*Q*x;
     sosc(3) = V1 >= x'*Q*x;
     sosc(4) = V2 >= x'*Q*x;
     
