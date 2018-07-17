@@ -120,6 +120,11 @@ else
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) >= V2(x)}
     sosconstr(8) = -((V2-V1) - ri(3)*phi + ri(4)*phi) >= 0;
     
+    sosconstr(9)  = ri(1) >= 0;
+    sosconstr(10) = ri(2) >= 0;
+    sosconstr(11) = ri(3) >= 0;
+    sosconstr(12) = ri(4) >= 0;
+    
     % solve problem
     [info,dopt] = sosopt(sosconstr,x,opts);
 
