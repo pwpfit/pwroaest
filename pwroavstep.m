@@ -49,10 +49,11 @@ function varargout = pwroavstep(f1,f2,phi,p,x,z,beta,gamma,s0,s,si,sj,L1,L2,roao
 opts = roaopts.sosopts;
 zi   = roaopts.zi;
 
-varargout = cell(1,nargout);
 
 if length(z) == 1
     % common Lyapunov function
+    varargout = cell(1,2);
+    
     gamma = min(gamma);
     
     % Lyapunov decision variable
@@ -84,6 +85,7 @@ if length(z) == 1
     end
 else
     % multiple Lyapunov functions
+    varargout = cell(1,4);
 
     % Lyapunov decision variables
     [V1,c1] = polydecvar('c1',z{1});
