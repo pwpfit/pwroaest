@@ -114,7 +114,7 @@ for i1=1:NstepBis
         
     elseif g <= gmin
         % local V-s problem
-        [V{1},~] = roavstep(f1,p,x,zV,b,g,s0,s,L1,L2,sopts);
+        [V{1},~] = roavstep(f1,p,x,zV{1},b,g,s0,s,L1,L2,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
