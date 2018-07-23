@@ -124,7 +124,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,b,[g1 g2],s0,s,si,sj,L1,L2,roaopts);
+        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,[b1 b2],g,s0,s,si,sj,L1,L2,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -248,19 +248,21 @@ for i1=1:NstepBis
         end
         b = bbnds(1);
         
+        b2 = [];
         sj = polynomial;
     else
         %======================================================================
         % Beta 1 Step: Solve the following problem
         % {x: p(x)) <= beta1} intersects {x:phi(x) <= 0} is contained 
-        % in {x: V(x) <= gamma1}
+        % in {x: V(x) <= gamma}
         % max beta subject to
         %   -[(V - gamma1) + (beta1 - p)*s0 - phi*si] in SOS, s0,si in SOS
         %======================================================================
         gopts.maxobj = betamax;
-        [bbnds,sb1,sj1]=pwpcontain(V{1}-g1, ...
-                                   p, phi, z1, zi, gopts ...
-        );
+%         [bbnds,sb1,sj1]=pwpcontain(V{1}-g1, ...
+%                                    p, phi, z1, zi, gopts ...
+%         );
+        [bbnds,sb1]=pcontain(V{1}-g,p,z1,gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 1 step infeasible at iteration = %d\n',i1);
@@ -272,14 +274,15 @@ for i1=1:NstepBis
         %======================================================================
         % Beta 2 Step: Solve the following problem
         % {x: p(x)) <= beta2} intersects {x:phi(x) > 0} is contained 
-        % in {x: V(x) <= gamma2}
+        % in {x: V(x) <= gamma}
         % max beta2 subject to
         %   -[(V - gamma2) + (beta2 - p)*s0 + phi*si] in SOS, s0,si in SOS
         %======================================================================
         gopts.maxobj = betamax;
-        [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
-                                   p, -phi+L2, z1, zi, gopts ...
-        );
+%         [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
+%                                    p, -phi+L2, z1, zi, gopts ...
+%         );
+        [bbnds,sb2]=pcontain(V{2}-g,p,z1,gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 2 step infeasible at iteration = %d\n',i1);
@@ -289,7 +292,7 @@ for i1=1:NstepBis
         b2 = bbnds(1)
         
         s0 = [sb1 sb2];
-        sj = [sj1 sj2];
+        sj = [0 0]; %sj = [sj1 sj2];
         b  = min(b1,b2);
     end
     
