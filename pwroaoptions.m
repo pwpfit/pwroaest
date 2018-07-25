@@ -80,6 +80,8 @@ methods
         else
             error('zVi must be a non-empty cell of vectors of monomials.');
         end
+        
+        opt.zV = opt.zVi{1};
     end
 
 
