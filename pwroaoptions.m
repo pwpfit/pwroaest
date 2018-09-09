@@ -18,13 +18,14 @@ classdef pwroaoptions < roaoptions
 %            iteration. Specifically, zi is a column vector of monomials 
 %            used to specify si(xi) in the Gram matrix form, 
 %            si(xi)=zi(xi)'*C*zi(xi). [default =  monomials(xi, 1:2) ]
+%       -zVi:   Cell of monomials for multiple Lyapunov functions.
 %
 %% About
 %
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-05-22
+% * Changed:    2018-09-09
 %
 %% See also
 %
