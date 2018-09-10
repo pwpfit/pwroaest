@@ -246,7 +246,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        b = bbnds(1);
+        b1 = bbnds(1);
         
         b2 = [];
         sj = polynomial;
@@ -293,9 +293,10 @@ for i1=1:NstepBis
         
         s0 = [sb1 sb2];
         sj = [0 0]; %sj = [sj1 sj2];
-        b  = min(b1,b2);
     end
-    
+
+    b  = min([b1 b2]);
+
     if b > .99*betamax && strcmp(display,'on')
         fprintf('warning: result of beta step close to maximum (99%%) at iteration = %d\n',i1);
     end
