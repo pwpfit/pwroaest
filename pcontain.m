@@ -145,16 +145,7 @@ end
 %     (p2*s-p1) + t*s in SOS
 t = pvar('g');
 
-z2 = kron(z,z);
-if length(monomials(z2))/length(z2) > 0.125
-    % use SOS decision variable as long as the number of additional 
-    % components is reasonable small
-    s = sosdecvar('c',z);
-else
-    % switch to minimal affine subspace decision variable
-    % for large problems
-    s = polydecvar('c',monomials(z2));
-end
+s = sosdecvar2('c',z);
 
 sosc(1) = s>=0;
 sosc(2) = (p2*s-p1)+t*s>=0;

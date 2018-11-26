@@ -55,8 +55,8 @@ end
 %       s, si in SOS
 %       p2*s - pa + t*s + phi*si in SOS
 t   = pvar('g');
-s1  = sosdecvar('c',z);
-si1 = sosdecvar('ci',zi);
+s1  = sosdecvar2('c',z);
+si1 = sosdecvar2('ci',zi);
 
 sosc(1) = s1 >= 0;
 sosc(2) = si1 >= 0;
