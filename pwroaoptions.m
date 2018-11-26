@@ -40,6 +40,8 @@ properties
     phi;
     xi;
     zi;
+    z1i;
+    z2i;
     %zV  -- inherited from ROAOPTIONS
     %Vin -- inherited from ROAOPTIONS
     zVi;
@@ -65,6 +67,14 @@ methods
         
         if isempty(opt.zVi)
             opt.zVi = opt.zV;
+        end
+        
+        if isempty(opt.z1i)
+            opt.z1i = opt.z1;
+        end
+        
+        if isempty(opt.z2i)
+            opt.z2i = opt.z2;
         end
         
         if isempty(opt.Vi0) && ~isempty(opt.Vin)
@@ -95,9 +105,37 @@ methods
         end
     end
     
+    % Set: z1i
+    function opt = set.z1i(opt,value)
+        if  ismonom(value) || isa(value,'double')
+            opt.z1i = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
+            opt.z1i = value;
+        else
+            error('Multiplier of piecewise beta step must be a monomial or constant.');
+        end
+        
+        opt.z1 = opt.z1i{1};
+    end
+    
+    % Set: z2i
+    function opt = set.z2i(opt,value)
+        if  ismonom(value) && ~isa(value,'double')
+            opt.z2i = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
+            opt.z2i = value;
+        else
+            error('Multiplier of piecewise gamma step must be a monomial and non-constant.');
+        end
+        
+        opt.z2 = opt.z2i{1};
+    end 
+    
     % Set: zi
     function opt = set.zi(opt,value)
         if  ismonom(value) && ~isa(value,'double')
+            opt.zi = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
             opt.zi = value;
         else
             error('Multiplier for boundary condition must be a monomial and non-constant.');

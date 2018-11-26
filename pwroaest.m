@@ -57,8 +57,8 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 % information from options
 p  = roaopts.p;
 zV = roaopts.zVi;
-z1 = roaopts.z1;
-z2 = roaopts.z2;
+z1 = roaopts.z1i;
+z2 = roaopts.z2i;
 zi = roaopts.zi;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
@@ -141,7 +141,7 @@ for i1=1:NstepBis
         % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
         %======================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s] = pcontain(jacobian(V{1},x)*f1+L2,V{1},z2,gopts);
+        [gbnds,s] = pcontain(jacobian(V{1},x)*f1+L2,V{1},z2{1},gopts);
         if isempty(gbnds)
             if strcmp(display,'on')
                 fprintf('pre gamma step infeasible at iteration = %d\n',i1);
@@ -189,7 +189,7 @@ for i1=1:NstepBis
         %==================================================================
         gopts.maxobj = gammamax;
         [gbnds,s1,si1] = pwpcontain(jacobian(V{1},x)*f1+L2,  ...
-                                    V{1}, phi, z2, zi, gopts ...
+                                    V{1}, phi, z2{1}, zi{1}, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -209,7 +209,7 @@ for i1=1:NstepBis
         %==================================================================
         gopts.maxobj = gammamax;
         [gbnds,s2,si2] = pwpcontain(jacobian(V{end},x)*f2+L2,  ...
-                                    V{end}, -phi+L2, z2, zi, gopts ...
+                                    V{end}, -phi+L2, z2{end}, zi{end}, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -239,7 +239,7 @@ for i1=1:NstepBis
         %                 -[(V - gamma) + (beta - p)*s0] in SOS, s0 in SOS
         %======================================================================
         gopts.maxobj = betamax;
-        [bbnds,s0]=pcontain(V{1}-g,p,z1,gopts);
+        [bbnds,s0]=pcontain(V{1}-g,p,z1{1},gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta step infeasible at iteration = %d\n',i1);
@@ -262,7 +262,7 @@ for i1=1:NstepBis
 %         [bbnds,sb1,sj1]=pwpcontain(V{1}-g1, ...
 %                                    p, phi, z1, zi, gopts ...
 %         );
-        [bbnds,sb1]=pcontain(V{1}-g,p,z1,gopts);
+        [bbnds,sb1]=pcontain(V{1}-g,p,z1{1},gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 1 step infeasible at iteration = %d\n',i1);
@@ -282,7 +282,7 @@ for i1=1:NstepBis
 %         [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
 %                                    p, -phi+L2, z1, zi, gopts ...
 %         );
-        [bbnds,sb2]=pcontain(V{2}-g,p,z1,gopts);
+        [bbnds,sb2]=pcontain(V{2}-g,p,z1{end},gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 2 step infeasible at iteration = %d\n',i1);
