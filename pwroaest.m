@@ -70,6 +70,7 @@ gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 display = roaopts.display;
+debug   = roaopts.debug;
 Vin = roaopts.Vi0;
 
 % Vdeg = zV.maxdeg;
@@ -148,8 +149,8 @@ for i1=1:NstepBis
             end
             break;
         end
-        gpre = gbnds(1)
-
+        gpre = gbnds(1);
+        
         %======================================================================
         % Min Gamma Step: Solve the problem
         % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
@@ -162,7 +163,12 @@ for i1=1:NstepBis
             end
             break;
         end
-        gmin = gbnds(1)    
+        gmin = gbnds(1);
+        
+        if strcmp(debug,'on')
+            fprintf('debug: gpre = %4.6f \t gmin = %4.6f\n', gpre, gmin);
+        end
+
     else
         % origin at boundary
         % no local problem possible
@@ -197,7 +203,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        g1 = gbnds(1)
+        g1 = gbnds(1);
 
         %==================================================================
         % Gamma 2 Step: Solve the following problems
@@ -217,8 +223,12 @@ for i1=1:NstepBis
             end
             break;
         end
-        g2 = gbnds(1)
+        g2 = gbnds(1);
 
+        if strcmp(debug,'on')
+            fprintf('debug: g1 = %4.6f \t g2 = %4.6f\n', g1, g2);
+        end        
+        
         s  = [s1  s2 ];
         si = [si1 si2];
         g  = min(g1,g2);
@@ -291,13 +301,17 @@ for i1=1:NstepBis
         end
         b2 = bbnds(1)
         
+        if strcmp(debug,'on')
+            fprintf('debug: b1 = %4.6f \t b2 = %4.6f\n', b1, b2);
+        end
+        
         s0 = [sb1 sb2];
         sj = [0 0]; %sj = [sj1 sj2];
     end
 
     b  = min([b1 b2]);
 
-    if b > .99*betamax && strcmp(display,'on')
+    if b > .99*betamax && strcmp(debug,'on')
         fprintf('warning: result of beta step close to maximum (99%%) at iteration = %d\n',i1);
     end
     

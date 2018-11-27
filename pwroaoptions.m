@@ -46,6 +46,9 @@ properties
     %Vin -- inherited from ROAOPTIONS
     zVi;
     Vi0;
+    
+    %display -- inherited from ROAOPTIONS
+    debug;
 end
 
 methods
@@ -79,6 +82,10 @@ methods
         
         if isempty(opt.Vi0) && ~isempty(opt.Vin)
             opt.Vi0 = {opt.Vin};
+        end
+        
+        if isempty(opt.debug)
+            opt.debug = 'off';
         end
     end
     
@@ -149,6 +156,21 @@ methods
         else
             error('State vector for boundary condition must be polynomial variables.');
         end
+    end
+    
+    % Set: debug
+    function opt = set.debug(opt,value)
+        switch value
+            case 'off'
+                % nothing to do
+            case 'on'
+                opt.display = 'on';
+            otherwise
+                error('debug can be ''on'' or ''off''. ');
+        end
+        
+        % if not error
+        opt.debug = value;
     end
 end
 
