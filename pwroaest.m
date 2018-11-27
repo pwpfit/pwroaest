@@ -90,6 +90,8 @@ V = cell(size(zV));
 fprintf('\n---------------Beginning piecewise V-s iteration\n');
 biscount = 0;
 for i1=1:NstepBis
+    biscount = biscount+1;
+
     tic;
     
     %======================================================================
@@ -326,7 +328,6 @@ for i1=1:NstepBis
     iter(i1).s     = s;
     iter(i1).si    = si;
     iter(i1).time  = toc;
-    biscount = biscount+1;
 end
 if strcmp(display,'on')
     fprintf('---------------Ending V-s iteration.\n');
@@ -334,13 +335,13 @@ end
     
 %% Outputs
 iter(biscount+1:end) = [];
-[~, idx] = max([iter.beta]);
+[~, idx] = max([iter.beta -1]);     % handle empty beta value(s)
 beta  = iter(idx).beta;
 V     = iter(idx).V;
 s0    = iter(idx).s0;
 s2    = iter(idx).s;
 si    = iter(idx).si;
-gamma = iter(idx).gamma(1);
+gamma = iter(idx).gamma(1:end-2);   % handle empty gamma value
 
 if nargout <= 4
     varargout = {iter};
