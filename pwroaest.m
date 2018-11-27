@@ -281,7 +281,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        b1 = bbnds(1)
+        b1 = bbnds(1);
         
         %======================================================================
         % Beta 2 Step: Solve the following problem
@@ -301,7 +301,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        b2 = bbnds(1)
+        b2 = bbnds(1);
         
         if strcmp(debug,'on')
             fprintf('debug: b1 = %4.6f \t b2 = %4.6f\n', b1, b2);
