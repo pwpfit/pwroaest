@@ -48,7 +48,9 @@ properties
     Vi0;
     
     %display -- inherited from ROAOPTIONS
-    debug;
+    debug = 'off';
+    
+    gammacheck = 'none';
 end
 
 methods
@@ -84,9 +86,13 @@ methods
             opt.Vi0 = {opt.Vin};
         end
         
-        if isempty(opt.debug)
-            opt.debug = 'off';
-        end
+%         if isempty(opt.gammacheck) && length(opt.zVi) > 1
+%             % default: activate gamma feasibility check
+%             % for multiple Lyapunov functions
+%             opt.gammacheck = 'feas';
+%         elseif isempty(opt.gammacheck)
+%             opt.gammacheck = 'none';
+%         end
     end
     
     % Set: zV
@@ -155,6 +161,16 @@ methods
             opt.xi = value;
         else
             error('State vector for boundary condition must be polynomial variables.');
+        end
+    end
+    
+    % Set: gammacheck
+    function opt = set.gammacheck(opt,value)
+        AllowableVal = {'none' 'feas' 'check'};
+        if ischar(value) && any(strcmp(value,AllowableVal))
+            opt.gammacheck = value;
+        else
+            error('gammacheck must be one of ''none,'' ''feas,'' or ''check''.');
         end
     end
     
