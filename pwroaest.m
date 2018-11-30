@@ -231,9 +231,43 @@ for i1=1:NstepBis
             fprintf('debug: g1 = %4.6f \t g2 = %4.6f\n', g1, g2);
         end        
         
+        g  = min(g1,g2);
+    
         s  = [s1  s2 ];
         si = [si1 si2];
-        g  = min(g1,g2);
+        
+        if ~strcmp(roaopts.gammacheck, 'none')
+            %==============================================================
+            % Gamma Check Step: Solve the following problems
+            % {x:V(x) <= gamma} intersects {x:phi(x) <= 0} is contained 
+            % in {x:grad(V)*f1 < 0}
+            %
+            % and
+            %
+            % {x:V(x) <= gamma} intersects {x:phi(x) > 0} is contained 
+            % in {x:grad(V)*f2 < 0}
+            %
+            % with gamma = min(gamma1,gamma2)
+            %==============================================================
+            [s1,si1] = pwpcontain_check(jacobian(V{1},x)*f1+L2,  ...
+                                        V{1}-g, phi, z2{1}, zi{1}, gopts ...
+            );
+            [s2,si2] = pwpcontain_check(jacobian(V{end},x)*f2+L2,  ...
+                                        V{end}-g, -phi+L2, z2{end}, zi{end}, gopts ...
+            );
+
+            if isempty(s1) || isempty(s2)
+                if strcmp(display,'on')
+                    fprintf('gamma check step infeasible at iteration = %d\n',i1);
+                end
+                if strcmp(roaopts.gammacheck, 'check')
+                    break;
+                end
+            else    
+                s  = [s1  s2 ];
+                si = [si1 si2];
+            end
+        end
     end
 
     if g > .99*gammamax
@@ -281,7 +315,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        b1 = bbnds(1)
+        b1 = bbnds(1);
         
         %======================================================================
         % Beta 2 Step: Solve the following problem
@@ -301,7 +335,7 @@ for i1=1:NstepBis
             end
             break;
         end
-        b2 = bbnds(1)
+        b2 = bbnds(1);
         
         if strcmp(debug,'on')
             fprintf('debug: b1 = %4.6f \t b2 = %4.6f\n', b1, b2);

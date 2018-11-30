@@ -47,7 +47,8 @@ function varargout = pwroavstep(f1,f2,phi,p,x,z,beta,gamma,s0,s,si,sj,L1,L2,roao
 %%
 
 opts = roaopts.sosopts;
-zi   = roaopts.zi;
+zi1  = roaopts.zi{1};
+zi2  = roaopts.zi{end};
 
 
 if length(z) == 1
@@ -90,10 +91,10 @@ else
     [V2,c2] = polydecvar('c2',z{2});
     
     % continuity decision variables
-    ri = [ sosdecvar('ci1',zi)
-           sosdecvar('ci2',zi)
-           sosdecvar('ci3',zi)
-           sosdecvar('ci4',zi)
+    ri = [ sosdecvar('ci1',zi1)
+           sosdecvar('ci2',zi2)
+           sosdecvar('ci3',zi1)
+           sosdecvar('ci4',zi2)
     ];
     
     %% Multiple V-s feasibility problem
@@ -117,9 +118,9 @@ else
     sosconstr(6) = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
-    sosconstr(7) = -((V1-V2) - ri(1)*phi + ri(2)*phi) >= 0;
+    sosconstr(7) = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) >= V2(x)}
-    sosconstr(8) = -((V2-V1) - ri(3)*phi + ri(4)*phi) >= 0;
+    sosconstr(8) = -((V2-V1) + ri(3)*phi - ri(4)*phi) >= 0;
     
     sosconstr(9)  = ri(1) >= 0;
     sosconstr(10) = ri(2) >= 0;
