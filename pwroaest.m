@@ -60,9 +60,11 @@ zV = roaopts.zVi;
 z1 = roaopts.z1i;
 z2 = roaopts.z2i;
 zi = roaopts.zi;
+zg = roaopts.zg;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
 Q  = roaopts.Q;
+c  = roaopts.c;
 NstepBis = roaopts.NstepBis;
 sopts = roaopts.sosopts;
 gopts = roaopts.gsosopts;
@@ -278,6 +280,22 @@ for i1=1:NstepBis
     end 
     
     if length(V) == 1 || any(gpre <= gmin)
+        %==================================================================
+        % Constraint Step: Solve the following problem
+        % {x: V(x) <= gamma} is contained in {x: c(x) <= 0}
+        %==================================================================
+        [gcons,sg] = pcontain(V{1},c,zg{1},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+
+        gc = gcons(1);
+        
+        g = min([g, gc]);
+        
         %======================================================================
         % Beta Step: Solve the following problem
         % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
@@ -297,6 +315,42 @@ for i1=1:NstepBis
         b2 = [];
         sj = polynomial;
     else
+        %==================================================================
+        % Constraint 1 Step: Solve the following problem
+        % {x: V1(x) <= gamma} intersects {x:phi(x) <= 0} is contained in 
+        % {x: c(x) <= 0}
+        %==================================================================
+        [gcons,sg1,sj1] = pwpcontain(V{1},c,phi,zg{1},zi{1},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint 1 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+
+        gc1 = gcons(1);
+        
+        %==================================================================
+        % Constraint 2 Step: Solve the following problem
+        % {x: V2(x) <= gamma} intersects {x:phi(x) > 0} is contained in 
+        % {x: c(x) <= 0}
+        %==================================================================
+        [gcons,sg2,sj2] = pwpcontain(V{2},c,-phi+L2,zg{2},zi{2},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint 2 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+        
+        gc2 = gcons(2);
+        
+        gcons = min(gc1,gc2);
+        g = min([g, gcons]);
+        
+        sg = [sg1 sg2];
+        sj = [sj1 sj2];
+        
         %======================================================================
         % Beta 1 Step: Solve the following problem
         % {x: p(x)) <= beta1} intersects {x:phi(x) <= 0} is contained 
@@ -342,7 +396,7 @@ for i1=1:NstepBis
         end
         
         s0 = [sb1 sb2];
-        sj = [0 0]; %sj = [sj1 sj2];
+%         sj = [0 0]; %sj = [sj1 sj2];
     end
 
     b  = min([b1 b2]);
