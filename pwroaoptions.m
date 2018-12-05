@@ -1,4 +1,4 @@
-classdef pwroaoptions < roaoptions
+classdef pwroaoptions < droaoptions
 % Options for piecewise ROA estimation.
 %
 %% Usage & description
@@ -55,7 +55,7 @@ end
 
 methods
     function opt = pwroaoptions(f1, f2, phi, x, varargin)
-        opt@roaoptions(f1, x, varargin{:});
+        opt@droaoptions(f1, x, varargin{:});
         
         opt.f1  = f1;
         opt.f2  = f2;

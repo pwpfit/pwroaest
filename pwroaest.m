@@ -72,6 +72,7 @@ betamax = roaopts.betamax;
 display = roaopts.display;
 debug   = roaopts.debug;
 Vin = roaopts.Vi0;
+tau = roaopts.tau;
 
 % Vdeg = zV.maxdeg;
 Nsteps = NstepBis;
@@ -107,7 +108,7 @@ for i1=1:NstepBis
             V = Vin;
         elseif phi0 < 0
             % Construct Lyap function from linearization of LHS function
-            V{1}=linstab(f1,x,Q);
+            V{1}=dlinstab(f1,x,Q,tau);
             if length(V) > 1
                 V{2} = V{1};
             end
@@ -117,7 +118,7 @@ for i1=1:NstepBis
         
     elseif g <= gmin
         % local V-s problem
-        [V{1},~] = roavstep(f1,p,x,zV{1},b,g,s0,s,L1,L2,sopts);
+        [V{1},~] = droavstep(f1,p,x,zV{1},b,g,s0,s,L1,L2,tau,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -144,7 +145,7 @@ for i1=1:NstepBis
         % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
         %======================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s] = pcontain(jacobian(V{1},x)*f1+L2,V{1},z2{1},gopts);
+        [gbnds,s] = pcontain(ddiff(V{1},x,tau,f1)+L2,V{1},z2{1},gopts);
         if isempty(gbnds)
             if strcmp(display,'on')
                 fprintf('pre gamma step infeasible at iteration = %d\n',i1);
@@ -196,7 +197,7 @@ for i1=1:NstepBis
         %     -[grad(V)*f1 + (gamma1 - V)*s - phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s1,si1] = pwpcontain(jacobian(V{1},x)*f1+L2,  ...
+        [gbnds,s1,si1] = pwpcontain(ddiff(V{1},x,tau,f1)+L2,  ...
                                     V{1}, phi, z2{1}, zi{1}, gopts ...
         );
         if isempty(gbnds)
@@ -216,7 +217,7 @@ for i1=1:NstepBis
         %     -[grad(V)*f2 + (gamma - V)*s + phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s2,si2] = pwpcontain(jacobian(V{end},x)*f2+L2,  ...
+        [gbnds,s2,si2] = pwpcontain(ddiff(V{end},x,tau,f2)+L2,  ...
                                     V{end}, -phi+L2, z2{end}, zi{end}, gopts ...
         );
         if isempty(gbnds)
@@ -249,10 +250,10 @@ for i1=1:NstepBis
             %
             % with gamma = min(gamma1,gamma2)
             %==============================================================
-            [s1,si1] = pwpcontain_check(jacobian(V{1},x)*f1+L2,  ...
+            [s1,si1] = pwpcontain_check(ddiff(V{1},x,tau,f1)+L2,  ...
                                         V{1}-g, phi, z2{1}, zi{1}, gopts ...
             );
-            [s2,si2] = pwpcontain_check(jacobian(V{end},x)*f2+L2,  ...
+            [s2,si2] = pwpcontain_check(ddiff(V{end},x,tau,f2)+L2,  ...
                                         V{end}-g, -phi+L2, z2{end}, zi{end}, gopts ...
             );
 
