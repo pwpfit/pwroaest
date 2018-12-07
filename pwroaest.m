@@ -128,7 +128,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,[b1 b2],g,s0,s,si,sj,L1,L2,roaopts);
+        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,[b1 b2],g,s0,s,si,sj,L1,L2,tau,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
