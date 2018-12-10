@@ -91,8 +91,8 @@ sosconstr(1) = V >= L1;
 sosconstr(2) = (V-gamma) <= s1*(p-beta);
 
 % Constraint 3: -( (grad(V)*f+L2)+(gamma-V)*s2 ) in SOS
-Vdot = ddiff(V,x,tau,f);
-sosconstr(3) = Vdot <= -L2 + s2*(V-gamma);
+[Vdot,R] = ddiff(V,x,tau,f);
+sosconstr(3) = Vdot <= -L2 + s2*(R-gamma);
 
 % Solve feasibility problem
 [info,dopt] = sosopt(sosconstr,x,opts);

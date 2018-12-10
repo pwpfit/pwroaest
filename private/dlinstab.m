@@ -9,12 +9,14 @@ if tau == 0
     % fall back to continuous analysis
     [V,A,P] = linstab(f,x,Q);
     return
-end
-
-% else:
-
-% Linearize: x+ = A*x
-A=plinearize(x+tau*f,x);
+elseif tau > 0
+    % Linearize: x+ = A*x
+    A=plinearize(x+tau*f,x);
+else
+    % implicit discretization
+    % Linearize: x- = A^-1*x
+    A=plinearize(x+tau*f,x)^-1;
+end        
 
 % If A is stable then solve the Lyapunov equation: A'*P+P*A = -Q
 ev = eig(A);

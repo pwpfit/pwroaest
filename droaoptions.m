@@ -43,10 +43,10 @@ methods
     end
     
     function opt = set.tau(opt,value)
-        if isnumeric(value) && value >= 0
+        if isnumeric(value)
             opt.tau = value;
         else
-            error('Sample time must be non-negative number.');
+            error('Sample time must be a number.');
         end
     end
 end
