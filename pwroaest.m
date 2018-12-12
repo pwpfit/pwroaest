@@ -63,16 +63,29 @@ zi = roaopts.zi;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
 Q  = roaopts.Q;
+
 NstepBis = roaopts.NstepBis;
 sopts = roaopts.sosopts;
 gopts = roaopts.gsosopts;
 gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
-display = roaopts.display;
-debug   = roaopts.debug;
 Vin = roaopts.Vi0;
 tau = roaopts.tau;
+
+display = roaopts.display;
+debug   = roaopts.debug;
+log = roaopts.log;
+logpath = roaopts.logpath;
+
+if ~strcmp(log,'none') && ~exist(logpath{1},'file')
+    [success,info] = mkdir(logpath{1});
+    if success && ~isempty(info)
+        warning(info)
+    elseif ~success
+        error(info)
+    end
+end
 
 % Vdeg = zV.maxdeg;
 Nsteps = NstepBis;
@@ -361,13 +374,17 @@ for i1=1:NstepBis
     if strcmp(display,'on')
         fprintf('iteration = %d  \t beta = %4.6f \t gamma = %4.6f\n',i1,b,g);
     end
-    iter(i1).V     = V;
-    iter(i1).beta  = b;
-    iter(i1).gamma = [g gpre gmin];
-    iter(i1).s0    = s0;
-    iter(i1).s     = s;
-    iter(i1).si    = si;
-    iter(i1).time  = toc;
+    iteration.V     = V;
+    iteration.beta  = b;
+    iteration.gamma = [g gpre gmin];
+    iteration.s0    = s0;
+    iteration.s     = s;
+    iteration.si    = si;
+    iteration.time  = toc;
+    iter(i1) = iteration;
+    if strcmp(log,'step')
+        save([logpath{:} sprintf('iter%d',i1)], '-struct', 'iteration');
+    end
 end
 if strcmp(display,'on')
     fprintf('---------------Ending V-s iteration.\n');
@@ -376,16 +393,21 @@ end
 %% Outputs
 iter(biscount+1:end) = [];
 [~, idx] = max([iter.beta -1]);     % handle empty beta value(s)
-beta  = iter(idx).beta;
-V     = iter(idx).V;
-s0    = iter(idx).s0;
-s2    = iter(idx).s;
-si    = iter(idx).si;
-gamma = iter(idx).gamma(1:end-2);   % handle empty gamma value
+result = iter(idx);
+beta  = result.beta;
+V     = result.V;
+s0    = result.s0;
+s2    = result.s;
+si    = result.si;
+gamma = result.gamma(1:end-2);   % handle empty gamma value
 
 if nargout <= 4
     varargout = {iter};
 else
     varargout = {s0,s2,si,iter};
+end
 
+if any(strcmp(log,{'step' 'result'}))
+    save([logpath{:} 'result'], 'iter');
+    save([logpath{:} 'result'], '-struct', 'result', '-append');
 end
