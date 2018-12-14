@@ -7,7 +7,7 @@ if tau == 0
 elseif tau > 0
     % explicit discretization
     % v+ = v + tau*vdot
-    fdot = subs(f,v,v+tau*vdot)/tau - f;
+    fdot = subs(f,v,v+tau*vdot) - f;
 else
     % implicit discretization
     % v- = v - |tau|*vdot
