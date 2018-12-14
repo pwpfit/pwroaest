@@ -85,6 +85,8 @@ if ~strcmp(log,'none') && ~exist(logpath{1},'file')
     elseif ~success
         error(info)
     end
+elseif exist(logpath{1},'file')
+    delete([logpath{1} '/*.mat']);
 end
 
 % Vdeg = zV.maxdeg;
