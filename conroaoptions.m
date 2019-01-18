@@ -34,6 +34,9 @@ properties
     c;
     u;
     zg;
+    
+    zK;
+    Kin;
 end
 
 methods
