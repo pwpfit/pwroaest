@@ -48,7 +48,9 @@ methods
         
         opt@roaoptions(f, x, varargin{:});
         
-        opt.u = u;
+        if isempty(opt.u)
+            opt.u = u;
+        end
 
         % set zg to default only if constraint is given
         if isempty(opt.c)
