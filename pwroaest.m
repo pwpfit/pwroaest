@@ -59,8 +59,8 @@ p  = roaopts.p;
 zV = roaopts.zVi;
 z1 = roaopts.z1i;
 z2 = roaopts.z2i;
+zg = roaopts.zgi;
 zi = roaopts.zi;
-zg = roaopts.zg;
 zK = roaopts.zK;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
@@ -75,6 +75,8 @@ gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 Vin = roaopts.Vi0;
 Kin = roaopts.Kin;
+
+u  = roaopts.u;
 
 display = roaopts.display;
 debug   = roaopts.debug;
@@ -97,7 +99,7 @@ Nsteps = NstepBis;
 
 % initialize storage
 c0 = cell(Nsteps,1);
-iter= struct('V',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'sg',c0,'sj',sj,'time',c0,'aux',c0);
+iter= struct('V',c0,'K',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'sg',c0,'sj',c0,'time',c0,'aux',c0);
 
 % boundary condition at origin
 phi0 = double(subs(phi, x, zeros(size(x))));
@@ -142,9 +144,15 @@ for i1=1:NstepBis
     end        
     
     % system & constraints under control
-    fK1 = subs(f1,u,K);
-    fK2 = subs(f2,u,K);
-    cK  = subs(c, u,K);
+    if ~isempty(u)
+        fK1 = subs(f1,u,K);
+        fK2 = subs(f2,u,K);
+        cK  = polynomial(subs(c, u,K));
+    else
+        fK1 = f1;
+        fK2 = f2;
+        cK  = c;
+    end
     
     %======================================================================
     % Find V step:
@@ -230,7 +238,7 @@ for i1=1:NstepBis
     
     if gpre <= gmin
         % estimated region of attraction does not reach boundary
-        g  = gpre;
+        gstb = gpre;
         si = polynomial;
 
         if strcmp(display,'on')
@@ -279,7 +287,7 @@ for i1=1:NstepBis
 
         if strcmp(debug,'on')
             fprintf('debug: g1 = %4.6f \t g2 = %4.6f\n', g1, g2);
-        end        
+        end
         
         gstb  = min(g1,g2);
     
@@ -287,7 +295,7 @@ for i1=1:NstepBis
         si = [si1 si2];
     end
 
-    if g > .99*gammamax
+    if gstb > .99*gammamax
         if strcmp(display,'on')
             fprintf('result of gamma step close to maximum (99%%) at iteration = %d\n',i1);
         end
@@ -299,7 +307,7 @@ for i1=1:NstepBis
         % Constraint Step: Solve the following problem
         % {x: V(x) <= gamma} is contained in {x: c(x) <= 0}
         %==================================================================
-        [gcons,sg] = pcontain(V{1},cK,zg{1},gopts);
+        [gcons,sg] = pcontain(cK,V{1},zg{1},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint step infeasible at iteration = %d\n',i1);
@@ -309,6 +317,10 @@ for i1=1:NstepBis
 
         gcon = gcons(1);
         sj = polynomial;
+        
+        if strcmp(debug,'on')
+            fprintf('debug: gstb = %4.6f \t gcon = %4.6f\n', gstb, gcon);
+        end
         
         g = min([gstb, gcon]);
         
@@ -335,7 +347,7 @@ for i1=1:NstepBis
         % {x: V1(x) <= gamma} intersects {x:phi(x) <= 0} is contained in 
         % {x: c(x) <= 0}
         %==================================================================
-        [gcons,sg1,sj1] = pwpcontain(V{1},cK,phi,zg{1},zi{1},gopts);
+        [gcons,sg1,sj1] = pwpcontain(cK,V{1},phi,zg{1},zi{1},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint 1 step infeasible at iteration = %d\n',i1);
@@ -350,7 +362,7 @@ for i1=1:NstepBis
         % {x: V2(x) <= gamma} intersects {x:phi(x) > 0} is contained in 
         % {x: c(x) <= 0}
         %==================================================================
-        [gcons,sg2,sj2] = pwpcontain(V{2},cK,-phi+L2,zg{end},zi{end},gopts);
+        [gcons,sg2,sj2] = pwpcontain(cK,V{2},-phi+L2,zg{end},zi{end},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint 2 step infeasible at iteration = %d\n',i1);
@@ -359,6 +371,10 @@ for i1=1:NstepBis
         end
         
         gc2 = gcons(2);
+        
+        if strcmp(debug,'on')
+            fprintf('debug: gstb = %4.6f \t gc1 = %4.6f \t gc2 = %4.6f\n', gstb, gc1, gc2);
+        end
         
         gcon = min(gc1,gc2);
         g = min([gstb, gcon]);

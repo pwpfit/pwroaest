@@ -50,18 +50,28 @@ methods
         
         opt.u = u;
 
-        if isempty(opt.zg)
+        % set zg to default only if constraint is given
+        if isempty(opt.c)
+            opt.c = polynomial(-1);
+            %opt.zg = [];
+        elseif isempty(opt.zg)
             opt.zg = monomials(opt.x, 0:2);
         end
+
     end
     
     function opt = set.c(opt,value)
-        if isa(c,'polynomial')
+        if isa(value,'polynomial')
             opt.c = value;
+        else
+            error('Constraint function must be polynomial.');
         end
+    end
     
     function opt = set.zg(opt,value)
-        if ismonom(value)
+        if isempty(value)
+            opt.zg = [];
+        elseif ismonom(value)
             opt.zg = value;
         else
             error('zg must be vector of monomials.');
