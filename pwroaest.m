@@ -1,4 +1,4 @@
-function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
+function [beta,V,gamma,K,iter] = pwroaest(f1,f2,phi,x,roaopts)
 % Estimates lower bound of piece-wise region of attraction.
 %
 %% Usage & description
@@ -175,7 +175,7 @@ for i1=1:NstepBis
         
     elseif gpre <= gmin
         % local V-s problem
-        [V{1},~] = roavstep(fK1,p,x,zV{1},b,g,s0,s,L1,L2,sopts);
+        [V{1},~] = conroavstep(fK1,cK,p,x,zV{1},b,g,s0,s,sg,L1,L2,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -185,7 +185,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(fK1,fK2,phi,p,x,zV,[b1 b2],g,s0,s,si,[0 0],L1,L2,roaopts);
+        [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -500,16 +500,9 @@ iter(biscount+1:end) = [];
 result = iter(idx);
 beta  = result.beta;
 V     = result.V;
-s0    = result.s0;
-s2    = result.s;
-si    = result.si;
+K     = result.K;
 gamma = result.gamma;   % handle empty gamma value
 
-if nargout <= 4
-    varargout = {iter};
-else
-    varargout = {s0,s2,si,iter};
-end
 
 if any(strcmp(log,{'step' 'result'}))
     save([logpath{:} 'result'], 'iter');
