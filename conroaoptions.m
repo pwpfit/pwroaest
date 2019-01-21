@@ -3,7 +3,7 @@ classdef conroaoptions < roaoptions
 %
 %% Usage & description
 %
-%   opts = conroaoptions(f, g, x, ...)
+%   opts = conroaoptions(f, g, x, [u], ...)
 %
 % with inputs
 %       -f: polynomial vector field
@@ -11,17 +11,21 @@ classdef conroaoptions < roaoptions
 %       -u: input vector as PVAR
 %
 %   Name, Value:
-%       -c: constraint polynomial, vector field
+%       -zK: Vector of monomials for control function;
+%            i.e., zK is a column vector of monomials used to specifiy K(x)
+%            in the vector form, K(x) = C'*zK(x).
+%       -c:  constraint polynomial, vector field
 %       -zg: Monomials for constraint multiplier; zg is a column vector of
 %            monomials used to specifiy sg(x) in the Gram matrix form.
 %            [default = monomials(x, 1:2)]
+%       -Kin: Initial control function; default: [].
 %
 %% About
 %
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-12-01
-% * Changed:    2018-12-01
+% * Changed:    2019-01-15
 %
 %% See also
 %
@@ -41,7 +45,9 @@ end
 
 methods
     function opt = conroaoptions(f, x, u, varargin)
-        if nargin < 4 || ischar(u)
+        if nargin < 3
+            u = [];
+        elseif ischar(u)
             varargin = [{u} varargin];
             u = [];
         end
