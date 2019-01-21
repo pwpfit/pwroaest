@@ -47,7 +47,7 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-05-23
+% * Changed:    2019-01-15
 %
 %% See also
 %
@@ -147,7 +147,7 @@ for i1=1:NstepBis
     if ~isempty(u)
         fK1 = subs(f1,u,K);
         fK2 = subs(f2,u,K);
-        cK  = polynomial(subs(c, u,K));
+        cK  = polynomial(subs(c,u,K));
     else
         fK1 = f1;
         fK2 = f2;
@@ -173,7 +173,7 @@ for i1=1:NstepBis
             [V{:}]=pwlinstab(fK1,fK2,phi,x);
         end
         
-    elseif g <= gmin
+    elseif gpre <= gmin
         % local V-s problem
         [V{1},~] = roavstep(fK1,p,x,zV{1},b,g,s0,s,L1,L2,sopts);
         if isempty(V{1})
@@ -185,7 +185,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(fK1,fK2,phi,p,x,zV,[b1 b2],g,s0,s,si,sj,L1,L2,roaopts);
+        [V{:}] = pwroavstep(fK1,fK2,phi,p,x,zV,[b1 b2],g,s0,s,si,[0 0],L1,L2,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -370,7 +370,7 @@ for i1=1:NstepBis
             break;
         end
         
-        gc2 = gcons(2);
+        gc2 = gcons(1);
         
         if strcmp(debug,'on')
             fprintf('debug: gstb = %4.6f \t gc1 = %4.6f \t gc2 = %4.6f\n', gstb, gc1, gc2);
