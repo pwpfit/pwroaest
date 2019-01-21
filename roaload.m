@@ -1,4 +1,4 @@
-function [beta,V,gamma,iter] = roaload(varargin)
+function [beta,V,gamma,K,iter] = roaload(varargin)
 % Loads stored ROA estimation results.
 %
 %% Usage & description
@@ -82,5 +82,6 @@ iter  = S.iter;
 beta  = S.beta;
 V     = S.V;
 gamma = S.gamma;
+K     = S.K;
 
 end
