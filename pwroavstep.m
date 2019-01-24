@@ -129,7 +129,7 @@ else
     % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
     sosconstr(7) = -(con + sg(1)*(gamma - V1) - sj(1)*phi) >= 0;
     % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
-    sosconstr(8) = -(con + sg(2)*(gamma - V1) + sj(2)*(phi-L2)) >= 0;
+    sosconstr(8) = -(con + sg(2)*(gamma - V2) + sj(2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
     sosconstr(9) = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;
