@@ -124,7 +124,7 @@ for i1=1:NstepBis
     elseif isempty(zK)
         % nothing to do
         
-    elseif gmin <= gpre
+    elseif gpre <= gmin
         % local K-V-s problem
         K = roaKstep(f1,c,p,x,u,zK,V{1},b,g,s0,s,sg,L1,L2,sopts);
         if isempty(K)
@@ -137,7 +137,7 @@ for i1=1:NstepBis
         K = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
         if isempty(K)
             if strcmp(display,'on')
-                fprintf('K-step infeasible at iteration = %d\n',i1);
+                fprintf('common K-step infeasible at iteration = %d\n',i1);
             end
             break;
         end
