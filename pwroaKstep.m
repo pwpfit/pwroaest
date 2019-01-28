@@ -76,20 +76,21 @@ if length(V) == 1
     V = V{1};
     
     %% Common K-V-s feasibility problem
-    sosconstr = polyconstr;
+    sosconstr = cell(3,1);
 
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     gradV = jacobian(V,x);
 
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(1) = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+    sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(2) = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+    sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
 
     % {x: V(x) <= g} is contained in {x: c(x) <= 0}
-    sosconstr(3) = -(cK + sg*(gamma-V)) >= 0;
+    sosconstr{3} = -(cK + sg*(gamma-V)) >= 0;
 
     % solve problem
+    sosconstr = vertcat(sosconstr{:});
     [info,dopt] = sosopt(sosconstr,x,opts);
     
 else

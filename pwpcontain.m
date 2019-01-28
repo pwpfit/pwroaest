@@ -55,13 +55,23 @@ end
 %       s, si in SOS
 %       p2*s - pa + t*s + phi*si in SOS
 t   = pvar('g');
-s1  = sosdecvar2('c',z);
-si1 = sosdecvar2('ci',zi);
 
-sosc(1) = s1 >= 0;
-sosc(2) = si1 >= 0;
+if size(pa,1) == size(p2,1)
+    s1  = sosdecvar2('c',z);
+    si1 = sosdecvar2('ci',zi);
+else
+    s1  = sosmdecvar('c',z,size(pa,1)/size(p2,1));
+    si1 = sosmdecvar('ci',zi,size(pa,1)/size(p2,1));
+end
 
-sosc(3) = (p2*s1 - pa) + t*s1 +  phi   *si1 >= 0;
+sosc = cell(3,1);
+
+sosc{1} = s1 >= 0;
+sosc{2} = si1 >= 0;
+
+sosc{3} = (p2*s1 - pa) + t*s1 +  phi   *si1 >= 0;
+
+sosc = vertcat(sosc{:});
 
 gopts = opts;
 gopts.minobj = -opts.maxobj;

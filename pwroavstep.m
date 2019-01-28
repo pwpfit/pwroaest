@@ -65,25 +65,26 @@ if length(z) == 1
     [V,c] = polydecvar('c',z{1});
 
     %% Common V-s feasibility problem
-    sosconstr = polyconstr;
+    sosconstr = cell(5,1);
 
     % V-L1 in SOS
-    sosconstr(1) = V >= L1;
+    sosconstr{1} = V >= L1;
 
     % {x: p(x) <= b} is contained in {x: V(x) <= g}
-    sosconstr(2) = -((V-gamma) + s0*(beta-p)) >= 0;
+    sosconstr{2} = -((V-gamma) + s0*(beta-p)) >= 0;
 
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     gradV = jacobian(V,x);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(3) = -(gradV*f1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+    sosconstr{3} = -(gradV*f1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(4) = -(gradV*f2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+    sosconstr{4} = -(gradV*f2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
     
     % {x: V(x) <= g} is contained in {x: c(x) <= 0}
-    sosconstr(5) = -(con + sg*(gamma-V)) >= 0;
+    sosconstr{5} = -(con + sg*(gamma-V)) >= 0;
 
     % solve problem
+    sosconstr = vertcat(sosconstr{:});
     [info,dopt] = sosopt(sosconstr,x,opts);
 
     % output
@@ -107,41 +108,42 @@ else
     ];
     
     %% Multiple V-s feasibility problem
-    sosconstr = polyconstr;
+    sosconstr = cell(14,1);
     
     % Vi-L1 in SOS
-    sosconstr(1) = V1 >= L1;
-    sosconstr(2) = V2 >= L1;
+    sosconstr{1} = V1 >= L1;
+    sosconstr{2} = V2 >= L1;
     
     % {x: p(x) <= b} intersects {x: phi(x) <= 0} is contained in {x: V1(x) <= g}
-    sosconstr(3) = -((V1-gamma) + s0(1)*(beta(1)-p)) >= 0;
+    sosconstr{3} = -((V1-gamma) + s0(1)*(beta(1)-p)) >= 0;
     % {x: p(x) <= b} intersects {x: phi(x) > 0} is contained in {x: V2(x) <= g}
-    sosconstr(4) = -((V2-gamma) + s0(2)*(beta(2)-p)) >= 0;
+    sosconstr{4} = -((V2-gamma) + s0(2)*(beta(2)-p)) >= 0;
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     gradV1 = jacobian(V1,x);
     gradV2 = jacobian(V2,x);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(5) = -(gradV1*f1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+    sosconstr{5} = -(gradV1*f1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(6) = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+    sosconstr{6} = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
     
     % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
-    sosconstr(7) = -(con + sg(1)*(gamma - V1) - sj(1)*phi) >= 0;
+    sosconstr{7} = -(con + sg(1)*(gamma - V1) - sj(1)*phi) >= 0;
     % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
-    sosconstr(8) = -(con + sg(2)*(gamma - V2) + sj(2)*(phi-L2)) >= 0;
+    sosconstr{8} = -(con + sg(2)*(gamma - V2) + sj(2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
-    sosconstr(9) = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;
+    sosconstr{9} = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) >= V2(x)}
-    sosconstr(10) = -((V2-V1) + ri(3)*phi - ri(4)*phi) >= 0;
+    sosconstr{10} = -((V2-V1) + ri(3)*phi - ri(4)*phi) >= 0;
     
-    sosconstr(11) = ri(1) >= 0;
-    sosconstr(12) = ri(2) >= 0;
-    sosconstr(13) = ri(3) >= 0;
-    sosconstr(14) = ri(4) >= 0;
+    sosconstr{11} = ri(1) >= 0;
+    sosconstr{12} = ri(2) >= 0;
+    sosconstr{13} = ri(3) >= 0;
+    sosconstr{14} = ri(4) >= 0;
     
     % solve problem
+    sosconstr = vertcat(sosconstr{:});
     [info,dopt] = sosopt(sosconstr,x,opts);
 
     % output

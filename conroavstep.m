@@ -53,23 +53,24 @@ end
 
 % Constraint 1: 
 % V-L1  in SOS
-sosconstr = polyconstr;
-sosconstr(1) = V >= L1;
+sosconstr = cell(4,1);
+sosconstr{1} = V >= L1;
 
 % Constraint 2: 
 % {x: p(x) <= b} is contained in {x: V(x) <= g}
-sosconstr(2) = (V-gamma) <= s1*(p-beta);
+sosconstr{2} = (V-gamma) <= s1*(p-beta);
 
 % Constraint 3:
 % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
 Vdot = jacobian(V,x)*f;
-sosconstr(3) = Vdot <= -L2 + s2*(V-gamma);
+sosconstr{3} = Vdot <= -L2 + s2*(V-gamma);
 
 % Constraint 4:
 % {x: V(x) <= g} is contained in {x: c(x) <= 0}
-sosconstr(4) = -(con + sg*(gamma-V)) >= 0;
+sosconstr{4} = -(con + sg*(gamma-V)) >= 0;
 
 % Solve feasibility problem
+sosconstr = vertcat(sosconstr{:});
 [info,dopt] = sosopt(sosconstr,x,opts);
 
 % Create output

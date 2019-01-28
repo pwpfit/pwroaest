@@ -60,16 +60,17 @@ fK = subs(f,u,K);
 cK = subs(con,u,K);
 
 %% Constrained control feasibility problem
-sosconstr = polyconstr;
+sosconstr = cell(2,1);
 
 % {x: V(x) <= g} is contained in {x: grad(V)*fK < 0}
 Vdot = jacobian(V,x)*fK;
-sosconstr(1) = Vdot <= -L2 + s2*(V-gamma);
+sosconstr{1} = Vdot <= -L2 + s2*(V-gamma);
 
 % {x: V(x) <= g} is contained in {x: cK(x) <= 0}
-sosconstr(2) = -(cK + sg*(gamma-V)) >= 0;
+sosconstr{2} = -(cK + sg*(gamma-V)) >= 0;
 
 % solve feasibility problem
+sosconstr = vertcat(sosconstr{:});
 [info,dopt] = sosopt(sosconstr,x,opts);
 
 %% Output
