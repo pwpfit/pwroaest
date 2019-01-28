@@ -99,22 +99,23 @@ else
     V2 = V{2};
     
     %% Multiple K-V-s feasibility problem
-    sosconstr = polyconstr;
+    sosconstr = cell(4,1);
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     gradV1 = jacobian(V1,x);
     gradV2 = jacobian(V2,x);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(1) = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+    sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(2) = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+    sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
     
     % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
-    sosconstr(3) = -(cK + sg(1)*(gamma - V1) - sj(1)*phi) >= 0;
+    sosconstr{3} = -(cK + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
     % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
-    sosconstr(4) = -(cK + sg(2)*(gamma - V2) + sj(2)*(phi-L2)) >= 0;
+    sosconstr{4} = -(cK + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
     
     % solve problem
+    sosconstr = vertcat(sosconstr{:});
     [info,dopt] = sosopt(sosconstr,x,opts);
     
 end
