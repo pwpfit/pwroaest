@@ -57,6 +57,11 @@ methods
         if isempty(opt.u)
             opt.u = u;
         end
+        
+        if ~isempty(intersect(opt.x.varname, opt.u.varname))
+            warning('x and u should be disjunct.');
+        end
+        %TODO: check f is linear in u if zK is given.
 
         % set zg to default only if constraint is given
         if isempty(opt.c)
