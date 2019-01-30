@@ -78,9 +78,14 @@ end
 
 S = load([path{:} filename], '-mat');
 
-iter  = S.iter;
 beta  = S.beta;
 V     = S.V;
-gamma = S.gamma;
+gamma = S.gamma(1);
+
+if isfield(S, 'iter')
+    iter = S.iter;
+else
+    iter = S;
+end
 
 end
