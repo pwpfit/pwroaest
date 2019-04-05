@@ -80,8 +80,22 @@ if length(z) == 1
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
     sosconstr{4} = -(gradV*f2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
     
-    % {x: V(x) <= g} is contained in {x: c(x) <= 0}
-    sosconstr{5} = -(con + sg*(gamma-V)) >= 0;
+    if length(con) == 1
+        % polynomial control constraint
+        con0 = con{1};
+        
+        % {x: V(x) <= g} is contained in {x: c(x) <= 0}
+        sosconstr{5} = -(con0 + sg*(gamma-V)) >= 0;
+    else
+        % piecewise control constraint
+        con1 = con{1};
+        con2 = con{2};
+        
+        % {x: V(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c1(x) <= 0}
+        sosconstr{7} = -(con1 + sg(1)*(gamma - V) - sj(:,1)*phi) >= 0;
+        % {x: V(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c2(x) <= 0}
+        sosconstr{8} = -(con2 + sg(2)*(gamma - V) + sj(:,2)*(phi-L2)) >= 0;
+    end
 
     % solve problem
     sosconstr = vertcat(sosconstr{:});
@@ -99,6 +113,10 @@ else
     % Lyapunov decision variables
     [V1,c1] = polydecvar('c1',z{1});
     [V2,c2] = polydecvar('c2',z{2});
+    
+    % control constraints
+    con1 = con{1};
+    con2 = con{end};
     
     % continuity decision variables
     ri = [ sosdecvar('ci1',zi1)
@@ -128,9 +146,9 @@ else
     sosconstr{6} = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
     
     % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
-    sosconstr{7} = -(con + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
+    sosconstr{7} = -(con1 + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
     % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
-    sosconstr{8} = -(con + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
+    sosconstr{8} = -(con2 + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
     sosconstr{9} = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;

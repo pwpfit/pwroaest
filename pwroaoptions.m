@@ -50,6 +50,10 @@ properties
     %Vin -- inherited from ROAOPTIONS
     zVi;
     Vi0;
+    %zK  -- inherited from CONROAOPTIONS
+    %Kin -- inherited from CONROAOPTIONS
+    zKi;
+    Ki0;
     
     %display -- inherited from ROAOPTIONS
     debug = 'off';
@@ -92,8 +96,16 @@ methods
             opt.zgi = opt.zg;
         end
         
+        if isempty(opt.zKi)
+            opt.zKi = opt.zK;
+        end
+        
         if isempty(opt.Vi0) && ~isempty(opt.Vin)
             opt.Vi0 = {opt.Vin};
+        end
+        
+        if isempty(opt.Ki0) && ~isempty(opt.Kin)
+            opt.Ki0 = {opt.Kin};
         end
         
 %         if isempty(opt.gammacheck) && length(opt.zVi) > 1
@@ -109,7 +121,7 @@ methods
         end
     end
     
-    % Set: zV
+    % Set: zVi
     function opt = set.zVi(opt,value)
         if ismonom(value)
             opt.zVi = {value};
@@ -122,13 +134,34 @@ methods
         opt.zV = opt.zVi{1};
     end
 
+    % Set: zKi
+    function opt = set.zKi(opt,value)
+        if ismonom(value)
+            opt.zKi = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1})
+            opt.zKi = value;
+        else
+            error('zKi must be a non-empty cell of vectors of monomials.');
+        end
+        
+        opt.zK = opt.zKi{1};
+    end
 
-    % Set: Vin
+    % Set: Vi0
     function opt = set.Vi0(opt,value)
         if iscell(value) && ~isempty(value) && isa(value{1},'polynomial')
             opt.Vi0 = value;
         else
             error('Lyapunov functions must be polynomials.');
+        end
+    end
+    
+    % Set: Ki0
+    function opt = set.Ki0(opt,value)
+        if iscell(value) && ~isempty(value) && isa(value{1},'polynomial')
+            opt.Ki0 = value;
+        else
+            error('Controllers must be polynomials.');
         end
     end
     

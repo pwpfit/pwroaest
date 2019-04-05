@@ -61,7 +61,7 @@ z1 = roaopts.z1i;
 z2 = roaopts.z2i;
 zg = roaopts.zgi;
 zi = roaopts.zi;
-zK = roaopts.zK;
+zK = roaopts.zKi;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
 Q  = roaopts.Q;
@@ -74,7 +74,7 @@ gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 Vin = roaopts.Vi0;
-Kin = roaopts.Kin;
+Kin = roaopts.Ki0;
 
 u  = roaopts.u;
 
@@ -107,6 +107,10 @@ phi0 = double(subs(phi, x, zeros(size(x))));
 % Lyapunov functions
 V = cell(size(zV));
 
+% controllers
+K  = cell(size(zK));
+cK = cell(size(zK));
+
 %% Run V-s iteration
 fprintf('\n---------------Beginning piecewise V-s iteration\n');
 biscount = 0;
@@ -117,25 +121,27 @@ for i1=1:NstepBis
 
     if i1==1
         if ~isempty(Kin)
-            K = Kin;
+            K(:) = Kin;
         else
-            K = zeros(size(u));
+            K(:) = zeros(size(u));
         end
     elseif isempty(zK)
         % nothing to do
         
     elseif gpre <= gmin
         % local K-V-s problem
-        K = roaKstep(f1,c,p,x,u,zK,V{1},b,g,s0,s,sg,L1,L2,sopts);
-        if isempty(K)
+        K{1} = roaKstep(f1,c,p,x,u,zK{1},V{1},b,g,s0,s,sg,L1,L2,sopts);
+        if isempty(K{1})
             if strcmp(display,'on')
                 fprintf('local K-step infeasible at iteration = %d\n',i1);
             end
             break;
+        elseif length(K) > 1
+            K{2} = K{1};
         end
     else
-        K = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
-        if isempty(K)
+        [K{:}] = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
+        if isempty(K{1})
             if strcmp(display,'on')
                 fprintf('common K-step infeasible at iteration = %d\n',i1);
             end
@@ -145,13 +151,14 @@ for i1=1:NstepBis
     
     % system & constraints under control
     if ~isempty(u)
-        fK1 = subs(f1,u,K);
-        fK2 = subs(f2,u,K);
-        cK  = polynomial(subs(c,u,K));
+        fK1 = subs(f1,u,K{1});
+        fK2 = subs(f2,u,K{end});
+        cK{1}   = polynomial(subs(c,u,K{1}));
+        cK{end} = polynomial(subs(c,u,K{end}));
     else
         fK1 = f1;
         fK2 = f2;
-        cK  = c;
+        cK  = {c};
     end
     
     %======================================================================
@@ -175,7 +182,7 @@ for i1=1:NstepBis
         
     elseif gpre <= gmin
         % local V-s problem
-        [V{1},~] = conroavstep(fK1,cK,p,x,zV{1},b,g,s0,s,sg,L1,L2,sopts);
+        [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -302,12 +309,12 @@ for i1=1:NstepBis
         break;
     end 
     
-    if length(V) == 1 || any(gpre <= gmin)
+    if (length(V) == 1 && length(cK) == 1) || any(gpre <= gmin)
         %==================================================================
         % Constraint Step: Solve the following problem
         % {x: V(x) <= gamma} is contained in {x: c(x) <= 0}
         %==================================================================
-        [gcons,sg] = pcontain(cK,V{1},zg{1},gopts);
+        [gcons,sg] = pcontain(cK{1},V{1},zg{1},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint step infeasible at iteration = %d\n',i1);
@@ -345,9 +352,9 @@ for i1=1:NstepBis
         %==================================================================
         % Constraint 1 Step: Solve the following problem
         % {x: V1(x) <= gamma} intersects {x:phi(x) <= 0} is contained in 
-        % {x: c(x) <= 0}
+        % {x: c1(x) <= 0}
         %==================================================================
-        [gcons,sg1,sj1] = pwpcontain(cK,V{1},phi,zg{1},zi{1},gopts);
+        [gcons,sg1,sj1] = pwpcontain(cK{1},V{1},phi,zg{1},zi{1},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint 1 step infeasible at iteration = %d\n',i1);
@@ -360,9 +367,9 @@ for i1=1:NstepBis
         %==================================================================
         % Constraint 2 Step: Solve the following problem
         % {x: V2(x) <= gamma} intersects {x:phi(x) > 0} is contained in 
-        % {x: c(x) <= 0}
+        % {x: c2(x) <= 0}
         %==================================================================
-        [gcons,sg2,sj2] = pwpcontain(cK,V{2},-phi+L2,zg{end},zi{end},gopts);
+        [gcons,sg2,sj2] = pwpcontain(cK{end},V{end},-phi+L2,zg{end},zi{end},gopts);
         if isempty(gcons)
             if strcmp(display,'on')
                 fprintf('constraint 2 step infeasible at iteration = %d\n',i1);
@@ -413,7 +420,7 @@ for i1=1:NstepBis
 %         [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
 %                                    p, -phi+L2, z1, zi, gopts ...
 %         );
-        [bbnds,sb2]=pcontain(V{2}-g,p,z1{end},gopts);
+        [bbnds,sb2]=pcontain(V{end}-g,p,z1{end},gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 2 step infeasible at iteration = %d\n',i1);

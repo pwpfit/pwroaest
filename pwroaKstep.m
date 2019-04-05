@@ -1,4 +1,4 @@
-function [K,c] = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L2,roaopts)
+function varargout = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L2,roaopts)
 % Solves the K-V-s step of the constraint-piecewise ROA iteration.
 %
 %% Usage & description
@@ -60,73 +60,147 @@ else
     opts = roaopts;
 end
 
-% control decision variable
-[K,c] = polydecvar('c',z);
-
-% control system
-fK1 = subs(f1,u,K);
-fK2 = subs(f2,u,K);
-
-% control input constraint
-cK = subs(con,u,K);
-
-
-if length(V) == 1
-    % common Lyapunov function
-    V = V{1};
+if length(z) == 1
+    % polynomial controller
+    varargout = cell(1,2);
     
-    %% Common K-V-s feasibility problem
-    sosconstr = cell(3,1);
+    % control decision variable
+    [K,c] = polydecvar('c',z{1});
 
-    % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV = jacobian(V,x);
+    % control system
+    fK1 = subs(f1,u,K);
+    fK2 = subs(f2,u,K);
 
-    % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
-    % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+    % control input constraint
+    cK = subs(con,u,K);
 
-    % {x: V(x) <= g} is contained in {x: c(x) <= 0}
-    sosconstr{3} = -(cK + sg*(gamma-V)) >= 0;
 
-    % solve problem
-    sosconstr = vertcat(sosconstr{:});
-    [info,dopt] = sosopt(sosconstr,x,opts);
-    
+    if length(V) == 1
+        % common Lyapunov function
+        V = V{1};
+
+        %% Common K-V-s feasibility problem
+        sosconstr = cell(3,1);
+
+        % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
+        gradV = jacobian(V,x);
+
+        % -( pa + (g-p2)*s - phi*si ) in SOS
+        sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+        % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
+        sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+
+        % {x: V(x) <= g} is contained in {x: c(x) <= 0}
+        sosconstr{3} = -(cK + sg*(gamma-V)) >= 0;
+
+        % solve problem
+        sosconstr = vertcat(sosconstr{:});
+        [info,dopt] = sosopt(sosconstr,x,opts);
+
+    else
+        % multiple Lyapunov functions
+        V1 = V{1};
+        V2 = V{2};
+
+        %% Multiple K-V-s feasibility problem
+        sosconstr = cell(4,1);
+
+        % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
+        gradV1 = jacobian(V1,x);
+        gradV2 = jacobian(V2,x);
+        % -( pa + (g-p2)*s - phi*si ) in SOS
+        sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+        % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
+        sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+
+        % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
+        sosconstr{3} = -(cK + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
+        % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
+        sosconstr{4} = -(cK + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
+
+        % solve problem
+        sosconstr = vertcat(sosconstr{:});
+        [info,dopt] = sosopt(sosconstr,x,opts);
+
+    end
+
+    %% Output
+    if info.feas
+        varargout{1} = subs(K,dopt);
+        varargout{2} = subs(c,dopt);
+    end
 else
-    % multiple Lyapunov functions
-    V1 = V{1};
-    V2 = V{2};
-    
-    %% Multiple K-V-s feasibility problem
-    sosconstr = cell(4,1);
-    
-    % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV1 = jacobian(V1,x);
-    gradV2 = jacobian(V2,x);
-    % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
-    % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
-    
-    % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
-    sosconstr{3} = -(cK + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
-    % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
-    sosconstr{4} = -(cK + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
-    
-    % solve problem
-    sosconstr = vertcat(sosconstr{:});
-    [info,dopt] = sosopt(sosconstr,x,opts);
-    
-end
+    % piecewise controller
+    varargout = cell(1,4);
 
-%% Output
-if info.feas
-    K = subs(K,dopt);
-    c = subs(c,dopt);
-else
-    K=[];
-    c=[];
-end
+        % control decision variable
+    [K1,c1] = polydecvar('c1',z{1});
+    [K2,c2] = polydecvar('c2',z{2});
 
+    % control system
+    fK1 = subs(f1,u,K1);
+    fK2 = subs(f2,u,K2);
+
+    % control input constraint
+    cK1 = subs(con,u,K1);
+    cK2 = subs(con,u,K2);
+
+    if length(V) == 1
+        % common Lyapunov function
+        V = V{1};
+
+        %% Common K-V-s feasibility problem
+        sosconstr = cell(3,1);
+
+        % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
+        gradV = jacobian(V,x);
+
+        % -( pa + (g-p2)*s - phi*si ) in SOS
+        sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+        % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
+        sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+
+        % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
+        sosconstr{3} = -(cK1 + sg(1)*(gamma - V) - sj(:,1)*phi) >= 0;
+        % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
+        sosconstr{4} = -(cK2 + sg(2)*(gamma - V) + sj(:,2)*(phi-L2)) >= 0;
+
+        % solve problem
+        sosconstr = vertcat(sosconstr{:});
+        [info,dopt] = sosopt(sosconstr,x,opts);
+
+    else
+        % multiple Lyapunov functions
+        V1 = V{1};
+        V2 = V{2};
+
+        %% Multiple K-V-s feasibility problem
+        sosconstr = cell(4,1);
+
+        % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
+        gradV1 = jacobian(V1,x);
+        gradV2 = jacobian(V2,x);
+        % -( pa + (g-p2)*s - phi*si ) in SOS
+        sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+        % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
+        sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+
+        % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
+        sosconstr{3} = -(cK1 + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
+        % {x: V2(x) <= g} intersects {x: phi(x) > 0} is contained in {x: c(x) <= 0}
+        sosconstr{4} = -(cK2 + sg(2)*(gamma - V2) + sj(:,2)*(phi-L2)) >= 0;
+
+        % solve problem
+        sosconstr = vertcat(sosconstr{:});
+        [info,dopt] = sosopt(sosconstr,x,opts);
+
+    end
+
+    %% Output
+    if info.feas
+        varargout{1} = subs(K1,dopt);
+        varargout{2} = subs(K2,dopt);
+        varargout{3} = subs(c1,dopt);
+        varargout{4} = subs(c2,dopt);
+    end
 end
