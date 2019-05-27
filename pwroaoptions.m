@@ -136,7 +136,7 @@ methods
 
     % Set: zKi
     function opt = set.zKi(opt,value)
-        if ismonom(value)
+        if isempty(value) || ismonom(value)
             opt.zKi = {value};
         elseif iscell(value) && ~isempty(value) && ismonom(value{1})
             opt.zKi = value;
