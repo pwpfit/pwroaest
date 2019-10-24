@@ -1,6 +1,6 @@
-function [gbnds,sout1,sout2,info] = pwpcontain(pa,p2,phi,z,zi,opts)
-% Maximizes g subject to the piecewise set containment constraint
-%   {x: p2(x) <= g} intersecting {phi(x) <= 0} is subset of {x: pa(x) <= 0}
+function [sout1,sout2,info] = pwpcontain_check(pa,p2,phi,z,zi,opts)
+% Check piecewise set containment constraint
+%   {x: p2(x) <= 0} intersecting (phi(x) <= 0} is subset of {x: pa(x) <= 0}
 %
 %% Usage & description
 %
@@ -14,9 +14,6 @@ function [gbnds,sout1,sout2,info] = pwpcontain(pa,p2,phi,z,zi,opts)
 %       -opts:  options for optimization; see GSOSOPTIONS.
 %
 % Outputs:
-%       -gbnds: 1-by-2 vector [glb,gub] providing lower and upper bound on
-%               the maximum value of g; will be empty if no feasible lower
-%               bound is found.
 %       -s,si:  2-by-1 vectors of multiplier functions proving piecewise
 %               set containment with glb; will be empty if no feasible
 %               lower bound is found.
@@ -27,12 +24,12 @@ function [gbnds,sout1,sout2,info] = pwpcontain(pa,p2,phi,z,zi,opts)
 %
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
-% * Created:    2018-05-22
-% * Changed:    2018-05-23
+% * Created:    2018-11-28
+% * Changed:    2018-11-28
 %
 %% See also
 %
-% See PCONTAIN
+% See PWPCONTAIN
 %%
 
 % polynomial variables
@@ -44,41 +41,30 @@ if ~exist('opts','var') || isempty(opts)
 end
 
 
-%% Call GSOSOPT
+%% Call SOSOPT
 % to solve:
-%       max g such that
 %       s, si in SOS
-%       -( pa + (g-p2)*s - phi*si ) in SOS
+%       -( pa - p2*s - phi*si ) in SOS
 %
-% GSOSOPT solves minimization of t := -g
-%       min t such that
-%       s, si in SOS
-%       p2*s - pa + t*s + phi*si in SOS
-t   = pvar('g');
 s1  = sosdecvar2('c',z);
 si1 = sosdecvar2('ci',zi);
 
 sosc(1) = s1 >= 0;
 sosc(2) = si1 >= 0;
 
-sosc(3) = (p2*s1 - pa) + t*s1 +  phi   *si1 >= 0;
+sosc(3) = (p2*s1 - pa) +  phi   *si1 >= 0;
 
-gopts = opts;
-gopts.minobj = -opts.maxobj;
-gopts.maxobj = -opts.minobj;
+sopts = opts;
 if strcmp(opts.display,'on')
-    gopts.display = 'pcontain'; % Undocumented syntax for proper display
+    sopts.display = 'pcontain'; % Undocumented syntax for proper display
 end
 
-[info,dopt] = gsosopt(sosc,x,t,gopts);
+[info,dopt] = sosopt(sosc,x,sopts);
 
-if ~isempty(info.tbnds)
-    gbnds = -info.tbnds([2 1]);
-    
-    sout1 = subs(s1, dopt);
+if info.feas
+    sout1 = subs(s1,  dopt);
     sout2 = subs(si1, dopt);
 else
-    gbnds = [];
-    sout1 = polynomial;
-    sout2 = polynomial;
+    sout1 = [];
+    sout2 = [];
 end
