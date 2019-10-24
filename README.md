@@ -10,6 +10,12 @@ and `f1, f2, φ` are polynomials in n variables `x`.
 It is assumed throughout this work that `f1(0) = 0 if φ(0) <= 0` and `f2(0) = 0 if φ(0) >= 0`.
 
 
+## Dependencies
+
+This work is based on the *Robustness Analysis of Nonlinear Systems* of the University of Minnesota for the analysis of polynomial systems using sum-of-squares programming. 
+In particular, the toolbox requires `sosopt`, `multipoly`, and the polynomial `roaest` routines of [SOSAnalysis](https://dept.aem.umn.edu/~AerospaceControl/) and their dependencies (i.e., `SeDuMi`) to be accessible for MATLAB.
+
+
 ## Theoretical background
 
 A set `X ⊂ ℝ^n` is an *estimate of the region of attraction of the equilibrium `x* = 0` for `f`* if any trajectory starting in `X` stays in `X` as well as converges to `x*` when time approaches infinity; i.e., `X` is both forward-invariant for `f` and attractive to `x*`.
