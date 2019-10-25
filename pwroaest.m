@@ -128,7 +128,7 @@ for i1=1:NstepBis
                 V{2} = V{1};
             end
         else
-            [V{:}]=pwlinstab(f1,f2,phi,x);
+            [V{:}]=pwlinstab(f1,f2,phi,x,tau);
         end
         
     elseif g <= gmin
