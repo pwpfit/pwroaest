@@ -1,4 +1,4 @@
-function varargout = pwlinstab(f1, f2, phi, x, Q, opts)
+function varargout = pwlinstab(f1, f2, phi, x, Q, tau, opts)
 % Performs a linear stability analysis for a piecewise polynomial system,
 %
 %          / f1(x)      if phi(x) <= 0;
@@ -25,6 +25,7 @@ function varargout = pwlinstab(f1, f2, phi, x, Q, opts)
 %       -Q:   postive definite parameter in the Lyapunov equations; must be
 %             either scalar or square matrix of the size of |x|, or empty. 
 %             [default = 1e-6]
+%       -tau: sample time [default = 0]
 %       -opts:  SOS options structre; see SOSOPTIONS.
 %
 % Outputs:
@@ -43,6 +44,9 @@ assert(nargout ~= 3 && nargout <= 5, 'Undefined number of outputs (%g)', nargout
 if ~exist('Q', 'var') || isempty(Q)
     Q = 1e-6;
 end
+if ~exist('tau', 'var')
+    tau = [];
+end
 if ~exist('opts', 'var')
     opts = sosoptions;
 end
@@ -50,13 +54,14 @@ end
 varargout = cell(1,nargout);
 P = [];
 
-% Linearize: xdot = A*x
-A1 = plinearize(f1,x);
-A2 = plinearize(f2,x);
+% Linearize
+A1 = plinearize(f1,x,tau);
+A2 = plinearize(f2,x,tau);
 
 ev1 = eig(A1);
 ev2 = eig(A2);
-if max(real(ev1), real(ev2)) >= 0
+if tau == 0 && max(real([ev1; ev2])) >= 0
+elseif tau ~= 0 && max(abs([ev1; ev2])) >= 1
     % if A1, A2 are unstable
     % nothing to do
 elseif nargout <= 1 || nargout == 4

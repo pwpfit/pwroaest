@@ -1,4 +1,4 @@
-classdef pwroaoptions < roaoptions
+classdef pwroaoptions < droaoptions
 % Options for piecewise ROA estimation.
 %
 %% Usage & description
@@ -49,13 +49,15 @@ properties
     
     %display -- inherited from ROAOPTIONS
     debug = 'off';
+    log   = 'none';
+    logpath;
     
     gammacheck = 'none';
 end
 
 methods
     function opt = pwroaoptions(f1, f2, phi, x, varargin)
-        opt@roaoptions(f1, x, varargin{:});
+        opt@droaoptions(f1, x, varargin{:});
         
         opt.f1  = f1;
         opt.f2  = f2;
@@ -93,6 +95,10 @@ methods
 %         elseif isempty(opt.gammacheck)
 %             opt.gammacheck = 'none';
 %         end
+
+        if isempty(opt.logpath) && ~strcmp(opt.log,'none')
+            opt.logpath = 'data/';
+        end
     end
     
     % Set: zV
@@ -187,6 +193,27 @@ methods
         
         % if not error
         opt.debug = value;
+    end
+    
+    % Set: log
+    function opt = set.log(opt,value)
+        AllowableVal = {'none' 'step' 'result'};
+        if ischar(value) && any(strcmp(value,AllowableVal))
+            opt.log = value;
+        else
+            error('log must be one of ''none,'' ''step,'' or ''result''.');
+        end
+    end
+    
+    % Set: logpath
+    function opt = set.logpath(opt,value)
+        if ischar(value)
+            opt.logpath = {value};
+        elseif iscell(value) && ~isempty(value) && ischar(value{1})
+            opt.logpath = value;
+        else
+            error('log path must be character array.');
+        end
     end
 end
 
