@@ -49,6 +49,7 @@ function varargout = pwroavstep(f1,f2,phi,p,x,z,beta,gamma,s0,s,si,sj,L1,L2,roao
 opts = roaopts.sosopts;
 zi1  = roaopts.zi{1};
 zi2  = roaopts.zi{end};
+tau  = roaopts.tau;
 
 
 if length(z) == 1
@@ -68,11 +69,12 @@ if length(z) == 1
     sosconstr(2) = -((V-gamma) + s0*(beta-p)) >= 0;
 
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV = jacobian(V,x);
+    [Vdot1,R1] = ddiff(V,x,tau,f1);
+    [Vdot2,R2] = ddiff(V,x,tau,f2);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(3) = -(gradV*f1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+    sosconstr(3) = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(4) = -(gradV*f2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+    sosconstr(4) = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
 
     % solve problem
     [info,dopt] = sosopt(sosconstr,x,opts);
@@ -110,12 +112,12 @@ else
     sosconstr(4) = -((V2-gamma) + s0(2)*(beta(2)-p) + sj(2)*(phi-L2)) >= 0;
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV1 = jacobian(V1,x);
-    gradV2 = jacobian(V2,x);
+    [Vdot1,R1] = ddiff(V1,x,tau,f1);
+    [Vdot2,R2] = ddiff(V2,x,tau,f2);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr(5) = -(gradV1*f1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+    sosconstr(5) = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr(6) = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+    sosconstr(6) = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
     
     % {x: phi(x) <= 0} intersects {x: phi(x) >= 0} is contained in {x: V1(x) <= V2(x)}
     sosconstr(7) = -((V1-V2) + ri(1)*phi - ri(2)*phi) >= 0;
