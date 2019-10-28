@@ -1,4 +1,4 @@
-classdef droaoptions < roaoptions
+classdef droaoptions < roaoptions2
 % Options for discrete ROA estimation.
 %
 %% Usage & description
@@ -20,7 +20,7 @@ classdef droaoptions < roaoptions
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-09-09
+% * Changed:    2018-10-28
 %
 %% See also
 %
@@ -35,7 +35,7 @@ end
 
 methods
     function opt = droaoptions(varargin)
-        opt@roaoptions(varargin{:});
+        opt@roaoptions2(varargin{:});
         
         if isempty(opt.tau)
             opt.tau = 0;

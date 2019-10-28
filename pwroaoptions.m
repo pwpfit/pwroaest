@@ -25,7 +25,7 @@ classdef pwroaoptions < conroaoptions
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-09-09
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -57,8 +57,6 @@ properties
     
     %display -- inherited from ROAOPTIONS
     debug = 'off';
-    log   = 'none';
-    logpath;
     
     gammacheck = 'none';
 end
@@ -249,28 +247,7 @@ methods
         
         % if not error
         opt.debug = value;
-    end
-    
-    % Set: log
-    function opt = set.log(opt,value)
-        AllowableVal = {'none' 'step' 'result'};
-        if ischar(value) && any(strcmp(value,AllowableVal))
-            opt.log = value;
-        else
-            error('log must be one of ''none,'' ''step,'' or ''result''.');
-        end
-    end
-    
-    % Set: logpath
-    function opt = set.logpath(opt,value)
-        if ischar(value)
-            opt.logpath = {value};
-        elseif iscell(value) && ~isempty(value) && ischar(value{1})
-            opt.logpath = value;
-        else
-            error('log path must be character array.');
-        end
-    end
+    end    
 end
 
 end
