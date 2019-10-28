@@ -1,4 +1,4 @@
-function varargout = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L2,roaopts)
+function varargout = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L2,tau,roaopts)
 % Solves the K-V-s step of the constraint-piecewise ROA iteration.
 %
 %% Usage & description
@@ -34,6 +34,7 @@ function varargout = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L
 %             definiteness of the Lyapunov function.
 %       -L2:  epsilon 2 (double or scalar field); enforces strict negative
 %             definiteness of the Lyapunov gradients.
+%       -tau: sample time
 %       -opts:  SOS options structre; see SOSOPTIONS.
 %
 % Outputs:
@@ -47,7 +48,7 @@ function varargout = pwroaKstep(f1,f2,phi,con,~,x,u,z,V,~,gamma,~,s,si,sg,sj,~,L
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-23
-% * Changed:    2019-01-21
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -83,12 +84,13 @@ if length(z) == 1
         sosconstr = cell(3,1);
 
         % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-        gradV = jacobian(V,x);
+        [Vdot1,R1] = ddiff(V,x,tau,fK1);
+        [Vdot2,R2] = ddiff(V,x,tau,fK2);
 
         % -( pa + (g-p2)*s - phi*si ) in SOS
-        sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+        sosconstr{1} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
         % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-        sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+        sosconstr{2} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
 
         % {x: V(x) <= g} is contained in {x: c(x) <= 0}
         sosconstr{3} = -(cK + sg*(gamma-V)) >= 0;
@@ -106,12 +108,12 @@ if length(z) == 1
         sosconstr = cell(4,1);
 
         % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-        gradV1 = jacobian(V1,x);
-        gradV2 = jacobian(V2,x);
+        [Vdot1,R1] = ddiff(V1,x,tau,fK1);
+        [Vdot2,R2] = ddiff(V2,x,tau,fK2);
         % -( pa + (g-p2)*s - phi*si ) in SOS
-        sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+        sosconstr{1} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
         % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-        sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+        sosconstr{2} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
 
         % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
         sosconstr{3} = -(cK + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
@@ -133,7 +135,7 @@ else
     % piecewise controller
     varargout = cell(1,4);
 
-        % control decision variable
+    % control decision variable
     [K1,c1] = polydecvar('c1',z{1});
     [K2,c2] = polydecvar('c2',z{2});
 
@@ -153,12 +155,13 @@ else
         sosconstr = cell(3,1);
 
         % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-        gradV = jacobian(V,x);
+        [Vdot1,R1] = ddiff(V,x,tau,fK1);
+        [Vdot2,R2] = ddiff(V,x,tau,fK2);
 
         % -( pa + (g-p2)*s - phi*si ) in SOS
-        sosconstr{1} = -(gradV*fK1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+        sosconstr{1} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
         % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-        sosconstr{2} = -(gradV*fK2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+        sosconstr{2} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
 
         % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
         sosconstr{3} = -(cK1 + sg(1)*(gamma - V) - sj(:,1)*phi) >= 0;
@@ -178,12 +181,12 @@ else
         sosconstr = cell(4,1);
 
         % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-        gradV1 = jacobian(V1,x);
-        gradV2 = jacobian(V2,x);
+        [Vdot1,R1] = ddiff(V1,x,tau,fK1);
+        [Vdot2,R2] = ddiff(V2,x,tau,fK2);
         % -( pa + (g-p2)*s - phi*si ) in SOS
-        sosconstr{1} = -(gradV1*fK1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+        sosconstr{1} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
         % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-        sosconstr{2} = -(gradV2*fK2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+        sosconstr{2} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
 
         % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
         sosconstr{3} = -(cK1 + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;

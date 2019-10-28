@@ -1,4 +1,4 @@
-function [V,c] = conroavstep(f,con,p,x,z,beta,gamma,s1,s2,sg,L1,L2,opts)
+function [V,c] = conroavstep(f,con,p,x,z,beta,gamma,s1,s2,sg,L1,L2,tau,opts)
 % Solves the V-s step of the piecewise ROA iteration.
 %
 %% Usage & description
@@ -23,6 +23,7 @@ function [V,c] = conroavstep(f,con,p,x,z,beta,gamma,s1,s2,sg,L1,L2,opts)
 %             definiteness of the Lyapunov function.
 %       -L2:  epsilon 2 (double or scalar field); enforces strict negative 
 %             definiteness of the Lyapunov gradient.
+%       -tau: sample time
 %       -opts:     SOS options structure;  see SOSOPTIONS.
 %
 % Outputs:
@@ -36,7 +37,7 @@ function [V,c] = conroavstep(f,con,p,x,z,beta,gamma,s1,s2,sg,L1,L2,opts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2019-01-21
-% * Changed:    2019-01-21
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -62,8 +63,8 @@ sosconstr{2} = (V-gamma) <= s1*(p-beta);
 
 % Constraint 3:
 % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-Vdot = jacobian(V,x)*f;
-sosconstr{3} = Vdot <= -L2 + s2*(V-gamma);
+[Vdot,R] = ddiff(V,x,tau,f);
+sosconstr{3} = Vdot <= -L2 + s2*(R-gamma);
 
 % Constraint 4:
 % {x: V(x) <= g} is contained in {x: c(x) <= 0}

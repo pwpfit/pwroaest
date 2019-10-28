@@ -1,4 +1,4 @@
-function [K,c] = roaKstep(f,con,~,x,u,z,V,~,gamma,~,s2,sg,~,L2,opts)
+function [K,c] = roaKstep(f,con,~,x,u,z,V,~,gamma,~,s2,sg,~,L2,tau,opts)
 % Solves the K-V-s step of the constraint ROA iteration.
 %
 %% Usage & description
@@ -25,6 +25,7 @@ function [K,c] = roaKstep(f,con,~,x,u,z,V,~,gamma,~,s2,sg,~,L2,opts)
 %             definiteness of the Lyapunov function.
 %       -L2:  epsilon 2 (double or scalar field); enforces strict negative 
 %             definiteness of the Lyapunov gradient.
+%       -tau: sample time
 %       -opts:     SOS options structure;  see SOSOPTIONS.
 %
 % Outputs:
@@ -38,7 +39,7 @@ function [K,c] = roaKstep(f,con,~,x,u,z,V,~,gamma,~,s2,sg,~,L2,opts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2019-01-24
-% * Changed:    2019-01-24
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -63,8 +64,8 @@ cK = subs(con,u,K);
 sosconstr = cell(2,1);
 
 % {x: V(x) <= g} is contained in {x: grad(V)*fK < 0}
-Vdot = jacobian(V,x)*fK;
-sosconstr{1} = Vdot <= -L2 + s2*(V-gamma);
+[Vdot,R] = ddiff(V,x,tau,fK);
+sosconstr{1} = Vdot <= -L2 + s2*(R-gamma);
 
 % {x: V(x) <= g} is contained in {x: cK(x) <= 0}
 sosconstr{2} = -(cK + sg*(gamma-V)) >= 0;

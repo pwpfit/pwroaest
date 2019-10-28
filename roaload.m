@@ -25,7 +25,7 @@ function [beta,V,gamma,K,iter] = roaload(varargin)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2019-01-21
-% * Changed:    2019-01-21
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -78,10 +78,20 @@ end
 
 S = load([path{:} filename], '-mat');
 
-iter  = S.iter;
 beta  = S.beta;
 V     = S.V;
 gamma = S.gamma;
-K     = S.K;
+
+if isfield(S, 'K')
+    K = S.K;
+else
+    K = [];
+end
+
+if isfield(S, 'iter')
+    iter = S.iter;
+else
+    iter = S;
+end
 
 end

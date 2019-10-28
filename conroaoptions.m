@@ -1,4 +1,4 @@
-classdef conroaoptions < roaoptions
+classdef conroaoptions < droaoptions
 % Options for ROA estimation under constraint control.
 %
 %% Usage & description
@@ -25,7 +25,7 @@ classdef conroaoptions < roaoptions
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-12-01
-% * Changed:    2019-01-15
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -52,13 +52,13 @@ methods
             u = [];
         end
         
-        opt@roaoptions(f, x, varargin{:});
+        opt@droaoptions(f, x, varargin{:});
         
         if isempty(opt.u)
             opt.u = u;
         end
         
-        if ~isempty(intersect(opt.x.varname, opt.u.varname))
+        if ~isempty(u) && ~isempty(intersect(opt.x.varname, opt.u.varname))
             warning('x and u should be disjunct.');
         end
         %TODO: check f is linear in u if zK is given.

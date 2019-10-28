@@ -1,4 +1,4 @@
-function [beta,V,gamma,K,iter] = pwroaest(f1,f2,phi,x,roaopts)
+function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 % Estimates lower bound of piece-wise region of attraction.
 %
 %% Usage & description
@@ -47,7 +47,7 @@ function [beta,V,gamma,K,iter] = pwroaest(f1,f2,phi,x,roaopts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2019-01-15
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -77,6 +77,8 @@ Vin = roaopts.Vi0;
 Kin = roaopts.Ki0;
 
 u  = roaopts.u;
+
+tau = roaopts.tau;
 
 display = roaopts.display;
 debug   = roaopts.debug;
@@ -119,6 +121,7 @@ for i1=1:NstepBis
 
     tic;
 
+    %TODO: discrete control
     if i1==1
         if ~isempty(Kin)
             K(:) = Kin;
@@ -172,17 +175,17 @@ for i1=1:NstepBis
             V = Vin;
         elseif phi0 < 0
             % Construct Lyap function from linearization of LHS function
-            V{1}=linstab(fK1,x,Q);
+            V{1}=dlinstab(fK1,x,Q,tau);
             if length(V) > 1
                 V{2} = V{1};
             end
         else
-            [V{:}]=pwlinstab(fK1,fK2,phi,x);
+            [V{:}]=pwlinstab(fK1,fK2,phi,x,tau);
         end
         
     elseif gpre <= gmin
         % local V-s problem
-        [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,sopts);
+        [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,tau,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -192,7 +195,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
+        [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -209,7 +212,8 @@ for i1=1:NstepBis
         % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
         %======================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s] = pcontain(jacobian(V{1},x)*fK1+L2,V{1},z2{1},gopts);
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
+        [gbnds,s] = pcontain(Vdot1+L2,R1,z2{1},gopts);
         if isempty(gbnds)
             if strcmp(display,'on')
                 fprintf('pre gamma step infeasible at iteration = %d\n',i1);
@@ -261,8 +265,9 @@ for i1=1:NstepBis
         %     -[grad(V)*f1 + (gamma1 - V)*s - phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s1,si1] = pwpcontain(jacobian(V{1},x)*fK1+L2,  ...
-                                    V{1}, phi, z2{1}, zi{1}, gopts ...
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
+        [gbnds,s1,si1] = pwpcontain(Vdot1+L2,  ...
+                                    R1, phi, z2{1}, zi{1}, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -281,8 +286,9 @@ for i1=1:NstepBis
         %     -[grad(V)*f2 + (gamma - V)*s + phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [gbnds,s2,si2] = pwpcontain(jacobian(V{end},x)*fK2+L2,  ...
-                                    V{end}, -phi+L2, z2{end}, zi{end}, gopts ...
+        [Vdot2,R2] = ddiff(V{end},x,tau,fK2);
+        [gbnds,s2,si2] = pwpcontain(Vdot2+L2,  ...
+                                    R2, -phi+L2, z2{end}, zi{end}, gopts ...
         );
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -434,7 +440,6 @@ for i1=1:NstepBis
         end
         
         s0 = [sb1 sb2];
-%         sj = [0 0]; %sj = [sj1 sj2];
     end
 
     b  = min([b1 b2]);
@@ -457,11 +462,13 @@ for i1=1:NstepBis
         %
         % with gamma = min(gamma1,gamma2)
         %==============================================================
-        [s1,si1] = pwpcontain_check(jacobian(V{1},x)*fK1+L2,  ...
-                                    V{1}-g, phi, z2{1}, zi{1}, gopts ...
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
+        [s1,si1] = pwpcontain_check(Vdot1+L2,  ...
+                                    R1-g, phi, z2{1}, zi{1}, gopts ...
         );
-        [s2,si2] = pwpcontain_check(jacobian(V{end},x)*fK2+L2,  ...
-                                    V{end}-g, -phi+L2, z2{end}, zi{end}, gopts ...
+        [Vdot2,R2] = ddiff(V{end},x,tau,fK2);
+        [s2,si2] = pwpcontain_check(Vdot2+L2,  ...
+                                    R2-g, -phi+L2, z2{end}, zi{end}, gopts ...
         );
 
         if isempty(s1) || isempty(s2)
@@ -510,6 +517,17 @@ V     = result.V;
 K     = result.K;
 gamma = result.gamma;   % handle empty gamma value
 
+s0    = result.s0;
+s2    = result.s;
+si    = result.si;
+sg    = result.sg;
+sj = result.sj;
+
+if nargout <= 5
+    varargout = {K,iter};
+else
+    varargout = {K,s0,s2,si,sg,sj,iter};
+end
 
 if any(strcmp(log,{'step' 'result'}))
     save([logpath{:} 'result'], 'iter');

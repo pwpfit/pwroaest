@@ -1,4 +1,4 @@
-function varargout = pwroavstep(f1,f2,phi,con,p,x,z,beta,gamma,s0,s,si,sg,sj,L1,L2,roaopts)
+function varargout = pwroavstep(f1,f2,phi,con,p,x,z,beta,gamma,s0,s,si,sg,sj,L1,L2,tau,roaopts)
 % Solves the V-s step of the piecewise ROA iteration.
 %
 %% Usage & description
@@ -32,6 +32,7 @@ function varargout = pwroavstep(f1,f2,phi,con,p,x,z,beta,gamma,s0,s,si,sg,sj,L1,
 %             definiteness of the Lyapunov function.
 %       -L2:  epsilon 2 (double or scalar field); enforces strict negative
 %             definiteness of the Lyapunov gradients.
+%        -tau: sample time
 %       -opts:  SOS options structre; see SOSOPTIONS.
 %
 % Outputs:
@@ -45,7 +46,7 @@ function varargout = pwroavstep(f1,f2,phi,con,p,x,z,beta,gamma,s0,s,si,sg,sj,L1,
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-23
-% * Changed:    2019-01-21
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -55,6 +56,7 @@ function varargout = pwroavstep(f1,f2,phi,con,p,x,z,beta,gamma,s0,s,si,sg,sj,L1,
 opts = roaopts.sosopts;
 zi1  = roaopts.zi{1};
 zi2  = roaopts.zi{end};
+tau  = roaopts.tau;
 
 
 if length(z) == 1
@@ -74,11 +76,12 @@ if length(z) == 1
     sosconstr{2} = -((V-gamma) + s0*(beta-p)) >= 0;
 
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV = jacobian(V,x);
+    [Vdot1,R1] = ddiff(V,x,tau,f1);
+    [Vdot2,R2] = ddiff(V,x,tau,f2);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr{3} = -(gradV*f1 + L2 + s(1)*(gamma-V) - si(1)*phi) >= 0;
+    sosconstr{3} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr{4} = -(gradV*f2 + L2 + s(2)*(gamma-V) + si(2)*(phi-L2)) >= 0;
+    sosconstr{4} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
     
     if length(con) == 1
         % polynomial control constraint
@@ -138,12 +141,12 @@ else
     sosconstr{4} = -((V2-gamma) + s0(2)*(beta(2)-p)) >= 0;
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
-    gradV1 = jacobian(V1,x);
-    gradV2 = jacobian(V2,x);
+    [Vdot1,R1] = ddiff(V1,x,tau,f1);
+    [Vdot2,R2] = ddiff(V2,x,tau,f2);
     % -( pa + (g-p2)*s - phi*si ) in SOS
-    sosconstr{5} = -(gradV1*f1 + L2 + s(1)*(gamma-V1) - si(1)*phi) >= 0;
+    sosconstr{5} = -(Vdot1 + L2 + s(1)*(gamma-R1) - si(1)*phi) >= 0;
     % -( pb + (g-p2)*s + (phi-l)*si ) in SOS
-    sosconstr{6} = -(gradV2*f2 + L2 + s(2)*(gamma-V2) + si(2)*(phi-L2)) >= 0;
+    sosconstr{6} = -(Vdot2 + L2 + s(2)*(gamma-R2) + si(2)*(phi-L2)) >= 0;
     
     % {x: V1(x) <= g} intersects {x: phi(x) <= 0} is contained in {x: c(x) <= 0}
     sosconstr{7} = -(con1 + sg(1)*(gamma - V1) - sj(:,1)*phi) >= 0;
