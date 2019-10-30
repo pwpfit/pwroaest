@@ -1,4 +1,4 @@
-function [beta,V,gamma,iter] = roaload(varargin)
+function [beta,V,gamma,K,iter] = roaload(varargin)
 % Loads stored ROA estimation results.
 %
 %% Usage & description
@@ -25,7 +25,7 @@ function [beta,V,gamma,iter] = roaload(varargin)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2019-01-21
-% * Changed:    2019-01-21
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -80,7 +80,13 @@ S = load([path{:} filename], '-mat');
 
 beta  = S.beta;
 V     = S.V;
-gamma = S.gamma(1);
+gamma = S.gamma;
+
+if isfield(S, 'K')
+    K = S.K;
+else
+    K = [];
+end
 
 if isfield(S, 'iter')
     iter = S.iter;

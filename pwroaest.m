@@ -47,7 +47,7 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-05-23
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -59,10 +59,13 @@ p  = roaopts.p;
 zV = roaopts.zVi;
 z1 = roaopts.z1i;
 z2 = roaopts.z2i;
+zg = roaopts.zgi;
 zi = roaopts.zi;
+zK = roaopts.zKi;
 L2 = roaopts.L2;
 L1 = roaopts.L1;
 Q  = roaopts.Q;
+c  = roaopts.c;
 
 NstepBis = roaopts.NstepBis;
 sopts = roaopts.sosopts;
@@ -71,6 +74,10 @@ gopts.minobj = 0;
 gammamax = roaopts.gammamax;
 betamax = roaopts.betamax;
 Vin = roaopts.Vi0;
+Kin = roaopts.Ki0;
+
+u  = roaopts.u;
+
 tau = roaopts.tau;
 
 display = roaopts.display;
@@ -94,13 +101,17 @@ Nsteps = NstepBis;
 
 % initialize storage
 c0 = cell(Nsteps,1);
-iter= struct('V',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'time',c0);
+iter= struct('V',c0,'K',c0,'beta',c0,'gamma',c0,'s0',c0,'s',c0,'si',c0,'sg',c0,'sj',c0,'time',c0,'aux',c0);
 
 % boundary condition at origin
 phi0 = double(subs(phi, x, zeros(size(x))));
 
 % Lyapunov functions
 V = cell(size(zV));
+
+% controllers
+K  = cell(size(zK));
+cK = cell(size(zK));
 
 %% Run V-s iteration
 fprintf('\n---------------Beginning piecewise V-s iteration\n');
@@ -109,6 +120,49 @@ for i1=1:NstepBis
     biscount = biscount+1;
 
     tic;
+
+    %TODO: discrete control
+    if i1==1
+        if ~isempty(Kin)
+            K(:) = Kin;
+        else
+            K(:) = zeros(size(u));
+        end
+    elseif isempty(zK)
+        % nothing to do
+        
+    elseif gpre <= gmin
+        % local K-V-s problem
+        K{1} = roaKstep(f1,c,p,x,u,zK{1},V{1},b,g,s0,s,sg,L1,L2,sopts);
+        if isempty(K{1})
+            if strcmp(display,'on')
+                fprintf('local K-step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        elseif length(K) > 1
+            K{2} = K{1};
+        end
+    else
+        [K{:}] = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
+        if isempty(K{1})
+            if strcmp(display,'on')
+                fprintf('common K-step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+    end        
+    
+    % system & constraints under control
+    if ~isempty(u)
+        fK1 = subs(f1,u,K{1});
+        fK2 = subs(f2,u,K{end});
+        cK{1}   = polynomial(subs(c,u,K{1}));
+        cK{end} = polynomial(subs(c,u,K{end}));
+    else
+        fK1 = f1;
+        fK2 = f2;
+        cK  = {c};
+    end
     
     %======================================================================
     % Find V step:
@@ -117,23 +171,21 @@ for i1=1:NstepBis
     % V-L1 in SOS
     %======================================================================
     if i1==1
-        g = 1;
-        
         if ~isempty(Vin)
             V = Vin;
         elseif phi0 < 0
             % Construct Lyap function from linearization of LHS function
-            V{1}=dlinstab(f1,x,Q,tau);
+            V{1}=dlinstab(fK1,x,Q,tau);
             if length(V) > 1
                 V{2} = V{1};
             end
         else
-            [V{:}]=pwlinstab(f1,f2,phi,x,tau);
+            [V{:}]=pwlinstab(fK1,fK2,phi,x,tau);
         end
         
-    elseif g <= gmin
+    elseif gpre <= gmin
         % local V-s problem
-        [V{1},~] = droavstep(f1,p,x,zV{1},b,g,s0,s,L1,L2,tau,sopts);
+        [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,tau,sopts);
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -143,7 +195,7 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(f1,f2,phi,p,x,zV,[b1 b2],g,s0,s,si,sj,L1,L2,tau,roaopts);
+        [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -160,7 +212,7 @@ for i1=1:NstepBis
         % {x:V(x) <= gamma} is contained in {x:grad(V)*f1 < 0}
         %======================================================================
         gopts.maxobj = gammamax;
-        [Vdot1,R1] = ddiff(V{1},x,tau,f1);
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
         [gbnds,s] = pcontain(Vdot1+L2,R1,z2{1},gopts);
         if isempty(gbnds)
             if strcmp(display,'on')
@@ -197,9 +249,9 @@ for i1=1:NstepBis
     
     if gpre <= gmin
         % estimated region of attraction does not reach boundary
-        g  = gpre;
+        gstb = gpre;
         si = polynomial;
-        sj = polynomial;
+
         if strcmp(display,'on')
             fprintf('Local polynomial problem at iteration = %d\n',i1);
         end
@@ -213,7 +265,7 @@ for i1=1:NstepBis
         %     -[grad(V)*f1 + (gamma1 - V)*s - phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [Vdot1,R1] = ddiff(V{1},x,tau,f1);
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
         [gbnds,s1,si1] = pwpcontain(Vdot1+L2,  ...
                                     R1, phi, z2{1}, zi{1}, gopts ...
         );
@@ -234,7 +286,7 @@ for i1=1:NstepBis
         %     -[grad(V)*f2 + (gamma - V)*s + phi*si] in SOS,  s,si in SOS
         %==================================================================
         gopts.maxobj = gammamax;
-        [Vdot2,R2] = ddiff(V{end},x,tau,f2);
+        [Vdot2,R2] = ddiff(V{end},x,tau,fK2);
         [gbnds,s2,si2] = pwpcontain(Vdot2+L2,  ...
                                     R2, -phi+L2, z2{end}, zi{end}, gopts ...
         );
@@ -248,57 +300,43 @@ for i1=1:NstepBis
 
         if strcmp(debug,'on')
             fprintf('debug: g1 = %4.6f \t g2 = %4.6f\n', g1, g2);
-        end        
+        end
         
-        g  = min(g1,g2);
+        gstb  = min(g1,g2);
     
         s  = [s1  s2 ];
         si = [si1 si2];
-        
-        if ~strcmp(roaopts.gammacheck, 'none')
-            %==============================================================
-            % Gamma Check Step: Solve the following problems
-            % {x:V(x) <= gamma} intersects {x:phi(x) <= 0} is contained 
-            % in {x:grad(V)*f1 < 0}
-            %
-            % and
-            %
-            % {x:V(x) <= gamma} intersects {x:phi(x) > 0} is contained 
-            % in {x:grad(V)*f2 < 0}
-            %
-            % with gamma = min(gamma1,gamma2)
-            %==============================================================
-            [Vdot1,R1] = ddiff(V{1},x,tau,f1);
-            [s1,si1] = pwpcontain_check(Vdot1+L2,  ...
-                                        R1-g, phi, z2{1}, zi{1}, gopts ...
-            );
-            [Vdot2,R2] = ddiff(V{end},x,tau,f2);
-            [s2,si2] = pwpcontain_check(Vdot2+L2,  ...
-                                        R2-g, -phi+L2, z2{end}, zi{end}, gopts ...
-            );
-
-            if isempty(s1) || isempty(s2)
-                if strcmp(display,'on')
-                    fprintf('gamma check step infeasible at iteration = %d\n',i1);
-                end
-                if strcmp(roaopts.gammacheck, 'check')
-                    break;
-                end
-            else    
-                s  = [s1  s2 ];
-                si = [si1 si2];
-            end
-        end
     end
 
-    if g > .99*gammamax
+    if gstb > .99*gammamax
         if strcmp(display,'on')
             fprintf('result of gamma step close to maximum (99%%) at iteration = %d\n',i1);
         end
         break;
     end 
     
-    if length(V) == 1 || any(gpre <= gmin)
+    if (length(V) == 1 && length(cK) == 1) || any(gpre <= gmin)
+        %==================================================================
+        % Constraint Step: Solve the following problem
+        % {x: V(x) <= gamma} is contained in {x: c(x) <= 0}
+        %==================================================================
+        [gcons,sg] = pcontain(cK{1},V{1},zg{1},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+
+        gcon = gcons(1);
+        sj = polynomial;
+        
+        if strcmp(debug,'on')
+            fprintf('debug: gstb = %4.6f \t gcon = %4.6f\n', gstb, gcon);
+        end
+        
+        g = min([gstb, gcon]);
+        
         %======================================================================
         % Beta Step: Solve the following problem
         % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
@@ -316,8 +354,47 @@ for i1=1:NstepBis
         b1 = bbnds(1);
         
         b2 = [];
-        sj = polynomial;
     else
+        %==================================================================
+        % Constraint 1 Step: Solve the following problem
+        % {x: V1(x) <= gamma} intersects {x:phi(x) <= 0} is contained in 
+        % {x: c1(x) <= 0}
+        %==================================================================
+        [gcons,sg1,sj1] = pwpcontain(cK{1},V{1},phi,zg{1},zi{1},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint 1 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+
+        gc1 = gcons(1);
+        
+        %==================================================================
+        % Constraint 2 Step: Solve the following problem
+        % {x: V2(x) <= gamma} intersects {x:phi(x) > 0} is contained in 
+        % {x: c2(x) <= 0}
+        %==================================================================
+        [gcons,sg2,sj2] = pwpcontain(cK{end},V{end},-phi+L2,zg{end},zi{end},gopts);
+        if isempty(gcons)
+            if strcmp(display,'on')
+                fprintf('constraint 2 step infeasible at iteration = %d\n',i1);
+            end
+            break;
+        end
+        
+        gc2 = gcons(1);
+        
+        if strcmp(debug,'on')
+            fprintf('debug: gstb = %4.6f \t gc1 = %4.6f \t gc2 = %4.6f\n', gstb, gc1, gc2);
+        end
+        
+        gcon = min(gc1,gc2);
+        g = min([gstb, gcon]);
+        
+        sg = [sg1 sg2];
+        sj = [sj1 sj2];
+        
         %======================================================================
         % Beta 1 Step: Solve the following problem
         % {x: p(x)) <= beta1} intersects {x:phi(x) <= 0} is contained 
@@ -349,7 +426,7 @@ for i1=1:NstepBis
 %         [bbnds,sb2,sj2]=pwpcontain(V{2}-g2, ...
 %                                    p, -phi+L2, z1, zi, gopts ...
 %         );
-        [bbnds,sb2]=pcontain(V{2}-g,p,z1{end},gopts);
+        [bbnds,sb2]=pcontain(V{end}-g,p,z1{end},gopts);
         if isempty(bbnds)
             if strcmp(display,'on')
                 fprintf('beta 2 step infeasible at iteration = %d\n',i1);
@@ -363,7 +440,6 @@ for i1=1:NstepBis
         end
         
         s0 = [sb1 sb2];
-        sj = [0 0]; %sj = [sj1 sj2];
     end
 
     b  = min([b1 b2]);
@@ -372,16 +448,56 @@ for i1=1:NstepBis
         fprintf('warning: result of beta step close to maximum (99%%) at iteration = %d\n',i1);
     end
     
+    
+    if ~strcmp(roaopts.gammacheck, 'none') && gpre > gmin
+        %==============================================================
+        % Gamma Check Step: Solve the following problems
+        % {x:V(x) <= gamma} intersects {x:phi(x) <= 0} is contained 
+        % in {x:grad(V)*f1 < 0}
+        %
+        % and
+        %
+        % {x:V(x) <= gamma} intersects {x:phi(x) > 0} is contained 
+        % in {x:grad(V)*f2 < 0}
+        %
+        % with gamma = min(gamma1,gamma2)
+        %==============================================================
+        [Vdot1,R1] = ddiff(V{1},x,tau,fK1);
+        [s1,si1] = pwpcontain_check(Vdot1+L2,  ...
+                                    R1-g, phi, z2{1}, zi{1}, gopts ...
+        );
+        [Vdot2,R2] = ddiff(V{end},x,tau,fK2);
+        [s2,si2] = pwpcontain_check(Vdot2+L2,  ...
+                                    R2-g, -phi+L2, z2{end}, zi{end}, gopts ...
+        );
+
+        if isempty(s1) || isempty(s2)
+            if strcmp(display,'on')
+                fprintf('gamma check step infeasible at iteration = %d\n',i1);
+            end
+            if strcmp(roaopts.gammacheck, 'check')
+                break;
+            end
+        else    
+            s  = [s1  s2 ];
+            si = [si1 si2];
+        end
+    end
+    
     % Print results and store iteration data
     if strcmp(display,'on')
         fprintf('iteration = %d  \t beta = %4.6f \t gamma = %4.6f\n',i1,b,g);
     end
     iteration.V     = V;
+    iteration.K     = K;
     iteration.beta  = b;
-    iteration.gamma = [g gpre gmin];
+    iteration.gamma = g;
     iteration.s0    = s0;
     iteration.s     = s;
     iteration.si    = si;
+    iteration.sg    = sg;
+    iteration.sj    = sj;
+    iteration.aux   = struct('gstb',gstb,'gcon',gcon,'gpre',gpre,'gmin',gmin);
     iteration.time  = toc;
     iter(i1) = iteration;
     if strcmp(log,'step')
@@ -398,15 +514,19 @@ iter(biscount+1:end) = [];
 result = iter(idx);
 beta  = result.beta;
 V     = result.V;
+K     = result.K;
+gamma = result.gamma;   % handle empty gamma value
+
 s0    = result.s0;
 s2    = result.s;
 si    = result.si;
-gamma = result.gamma(1:end-2);   % handle empty gamma value
+sg    = result.sg;
+sj = result.sj;
 
-if nargout <= 4
-    varargout = {iter};
+if nargout <= 5
+    varargout = {K,iter};
 else
-    varargout = {s0,s2,si,iter};
+    varargout = {K,s0,s2,si,sg,sj,iter};
 end
 
 if any(strcmp(log,{'step' 'result'}))

@@ -1,4 +1,4 @@
-classdef pwroaoptions < droaoptions
+classdef pwroaoptions < conroaoptions
 % Options for piecewise ROA estimation.
 %
 %% Usage & description
@@ -25,7 +25,7 @@ classdef pwroaoptions < droaoptions
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2018-09-09
+% * Changed:    2019-10-28
 %
 %% See also
 %
@@ -39,25 +39,31 @@ properties
     f2;
     phi;
     xi;
+    %z1 -- inherited from ROAOPTIONS
+    %z2 -- inherited from ROAOPTIONS
+    %zg -- inherited from CONROAOPTIONS
     zi;
     z1i;
     z2i;
+    zgi;
     %zV  -- inherited from ROAOPTIONS
     %Vin -- inherited from ROAOPTIONS
     zVi;
     Vi0;
+    %zK  -- inherited from CONROAOPTIONS
+    %Kin -- inherited from CONROAOPTIONS
+    zKi;
+    Ki0;
     
     %display -- inherited from ROAOPTIONS
     debug = 'off';
-    log   = 'none';
-    logpath;
     
     gammacheck = 'none';
 end
 
 methods
     function opt = pwroaoptions(f1, f2, phi, x, varargin)
-        opt@droaoptions(f1, x, varargin{:});
+        opt@conroaoptions(f1, x, varargin{:});
         
         opt.f1  = f1;
         opt.f2  = f2;
@@ -84,8 +90,20 @@ methods
             opt.z2i = opt.z2;
         end
         
+        if isempty(opt.zgi)
+            opt.zgi = opt.zg;
+        end
+        
+        if isempty(opt.zKi)
+            opt.zKi = opt.zK;
+        end
+        
         if isempty(opt.Vi0) && ~isempty(opt.Vin)
             opt.Vi0 = {opt.Vin};
+        end
+        
+        if isempty(opt.Ki0) && ~isempty(opt.Kin)
+            opt.Ki0 = {opt.Kin};
         end
         
 %         if isempty(opt.gammacheck) && length(opt.zVi) > 1
@@ -101,7 +119,7 @@ methods
         end
     end
     
-    % Set: zV
+    % Set: zVi
     function opt = set.zVi(opt,value)
         if ismonom(value)
             opt.zVi = {value};
@@ -114,8 +132,20 @@ methods
         opt.zV = opt.zVi{1};
     end
 
+    % Set: zKi
+    function opt = set.zKi(opt,value)
+        if isempty(value) || ismonom(value)
+            opt.zKi = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1})
+            opt.zKi = value;
+        else
+            error('zKi must be a non-empty cell of vectors of monomials.');
+        end
+        
+        opt.zK = opt.zKi{1};
+    end
 
-    % Set: Vin
+    % Set: Vi0
     function opt = set.Vi0(opt,value)
         if iscell(value) && ~isempty(value) && isa(value{1},'polynomial')
             opt.Vi0 = value;
@@ -124,9 +154,18 @@ methods
         end
     end
     
+    % Set: Ki0
+    function opt = set.Ki0(opt,value)
+        if iscell(value) && ~isempty(value) && isa(value{1},'polynomial')
+            opt.Ki0 = value;
+        else
+            error('Controllers must be polynomials.');
+        end
+    end
+    
     % Set: z1i
     function opt = set.z1i(opt,value)
-        if  ismonom(value) || isa(value,'double')
+        if ismonom(value) || isa(value,'double')
             opt.z1i = {value};
         elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
             opt.z1i = value;
@@ -139,7 +178,7 @@ methods
     
     % Set: z2i
     function opt = set.z2i(opt,value)
-        if  ismonom(value) && ~isa(value,'double')
+        if ismonom(value) && ~isa(value,'double')
             opt.z2i = {value};
         elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
             opt.z2i = value;
@@ -150,9 +189,24 @@ methods
         opt.z2 = opt.z2i{1};
     end 
     
+    % Set: zgi
+    function opt = set.zgi(opt,value)
+        if isempty(value)
+            opt.zgi = cell(1,1);
+        elseif ismonom(value) && ~isa(value,'double')
+            opt.zgi = {value};
+        elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
+            opt.zgi = value;
+        else
+            error('Multiplier of piecewise constraint step must be a monomial and non-constant.');
+        end
+        
+        opt.zg = opt.zgi{1};
+    end
+    
     % Set: zi
     function opt = set.zi(opt,value)
-        if  ismonom(value) && ~isa(value,'double')
+        if ismonom(value) && ~isa(value,'double')
             opt.zi = {value};
         elseif iscell(value) && ~isempty(value) && ismonom(value{1}) && ~isa(value{1},'double')
             opt.zi = value;
@@ -163,7 +217,7 @@ methods
     
     % Set: xi
     function opt = set.xi(opt,value)
-        if  ispvar(value)
+        if ispvar(value)
             opt.xi = value;
         else
             error('State vector for boundary condition must be polynomial variables.');
@@ -193,28 +247,7 @@ methods
         
         % if not error
         opt.debug = value;
-    end
-    
-    % Set: log
-    function opt = set.log(opt,value)
-        AllowableVal = {'none' 'step' 'result'};
-        if ischar(value) && any(strcmp(value,AllowableVal))
-            opt.log = value;
-        else
-            error('log must be one of ''none,'' ''step,'' or ''result''.');
-        end
-    end
-    
-    % Set: logpath
-    function opt = set.logpath(opt,value)
-        if ischar(value)
-            opt.logpath = {value};
-        elseif iscell(value) && ~isempty(value) && ischar(value{1})
-            opt.logpath = value;
-        else
-            error('log path must be character array.');
-        end
-    end
+    end    
 end
 
 end

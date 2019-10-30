@@ -145,10 +145,18 @@ end
 %     (p2*s-p1) + t*s in SOS
 t = pvar('g');
 
-s = sosdecvar2('c',z);
+if size(p1,1) == size(p2,1)
+    s = sosdecvar2('c',z);
+else
+    s = sosmdecvar('c',z,size(p1,1)/size(p2,1));
+end
 
-sosc(1) = s>=0;
-sosc(2) = (p2*s-p1)+t*s>=0;
+sosc = cell(2,1);
+
+sosc{1} = s>=0;
+sosc{2} = (p2*s-p1)+t*s >= 0;
+
+sosc = vertcat(sosc{:});
 
 gopts = opts;
 gopts.minobj = -opts.maxobj;
