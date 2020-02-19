@@ -3,9 +3,6 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 %
 %% Usage & description
 %
-%   [beta,V,gamma,iter] = pwroaest(f1, f2, phi, x, ropts)
-%   [beta,V,gamma,s1,s2,si,iter] = pwroaest(...)
-%
 % Estimates the lower bound of the region-of-attraction of the piecewise
 % polynomial vector field
 %
@@ -13,7 +10,7 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 %   xdot = |
 %          \ f2(x)      else;
 %
-% about the equilibrium point x = 0 with phi(0) < 0.
+% about the equilibrium point x = 0 with phi(0) <= 0.
 %
 % The piecewise ROA estimation problem is formulated as:
 %   max beta
@@ -23,24 +20,53 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 %       -( (grad(V)*f1 + L2) + (gamma-V)*s2' - phi*si' ) in SOS
 %       -( (grad(V)*f2 + L2) + (gamma-V)*s2" + phi*si" ) in SOS
 %
+% The preferred usage of PWROAEST is
+%
+%   pwroaeast(ropts)
+%
+% see PWROAOPTIONS for a full list of inputs and options. 
+%
+%   [beta,V,gamma] = pwroaest(...)
+%   [...,K,iter]   = pwroaest(...)
+%
+% Returns the maximal pseudo-radius beta, the maximizing Lyapunov function
+% V, and its maximal stable level set gamma as well as, optionally, a
+% synthesized control feedback K (empty if analysis only) and the results
+% of each iterations as structure iter.
+%
+% The following signatures are supported for legacy
+%
+%   pwroaest(f1, f2, phi, x, ropts)                         DEPRECATED
+%   [beta,V,gamma,K,s1,s2,si,sg,sj,iter] = pwroaest(...)    DEPREACTED
+%
+% Returns additionally the SOS-multipliers for the maximizing Lyapunov
+% function.
+%
 % The problem above is solved by a V-s iteration algorithm based on the
 % work of Balas et al. (2009).
 %
 % Inputs:
+%       -ropts: options for piece-wise ROA estimation; see PWROAOPTIONS.
+%
+%       Legacy:
 %       -f1:  first polynomial vector field
 %       -f2:  second polynomial vector field
 %       -phi: boundary condition (scalar field)
 %       -x:   state-space vector as PVAR
-%       -ropts: options for piece-wise ROA estimation; see PWROAOPTIONS.
 %
 % Outputs:
-%       -beta: maximum beta
-%       -V:  Lyapunov function corresponding to beta
+%       -beta:  maximum beta
+%       -V:     Lyapunov function corresponding to beta
+%       -gamma: stable level set of V
+%       -K:     synthesized control law, or empty cell
+%       -iter: structure containing the results for each iteration.
+%
+%       Legacy:
 %       -s1: multiplier for beta-step 
-%       -s2: multipliers [s2'; s2"] for gamma-step (Lyapunov gradient)
-%       -si: multipliers [si'; si"] for gamma-step (boundary condition)
-%       -iter: structure with fields V, beta, gamma, s1, s2, and time;
-%              contains the results for each iteration.
+%       -s2: multipliers for gamma-step (Lyapunov gradient)
+%       -si: multipliers for gamma-step (boundary condition)
+%       -sg: multipliers for constraint step (level set)
+%       -sj: multipliers for constraint step (boundary condition)
 %
 %% About
 %
@@ -53,6 +79,17 @@ function [beta,V,gamma,varargout] = pwroaest(f1,f2,phi,x,roaopts)
 %
 % See ROAEST, PWROAOPTIONS, PCONTAIN, PWPCONTAIN
 %%
+
+if isa(f1, 'pwroaoptions')
+    % pwroaest(roaopts)
+    roaopts = f1;
+    
+    f1 = roaopts.f1;
+    f2 = roaopts.f2;
+
+    phi = roaopts.phi;
+    x = roaopts.x;
+end
 
 % information from options
 p  = roaopts.p;
@@ -85,14 +122,16 @@ debug   = roaopts.debug;
 log = roaopts.log;
 logpath = roaopts.logpath;
 
-if ~strcmp(log,'none') && ~exist(logpath{1},'file')
+if strcmp(log,'none') 
+    % nothing to do
+elseif ~exist(logpath{1},'file')
     [success,info] = mkdir(logpath{1});
     if success && ~isempty(info)
         warning(info)
     elseif ~success
         error(info)
     end
-elseif exist(logpath{1},'file')
+else
     delete([logpath{1} '/*.mat']);
 end
 
@@ -126,9 +165,9 @@ for i1=1:NstepBis
         if ~isempty(Kin)
             K(:) = Kin;
         else
-            K(:) = zeros(size(u));
+            K{:} = zeros(size(u));
         end
-    elseif isempty(zK)
+    elseif isempty(zK{1})
         % nothing to do
         
     elseif gpre <= gmin
@@ -222,6 +261,7 @@ for i1=1:NstepBis
         end
         gpre = gbnds(1);
         
+        if ~isempty(f2)
         %======================================================================
         % Min Gamma Step: Solve the problem
         % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
@@ -235,6 +275,10 @@ for i1=1:NstepBis
             break;
         end
         gmin = gbnds(1);
+        else
+            % fall back to single ROA estimation
+            gmin = +Inf;
+        end
         
         if strcmp(debug,'on')
             fprintf('debug: gpre = %4.6f \t gmin = %4.6f\n', gpre, gmin);
@@ -252,7 +296,7 @@ for i1=1:NstepBis
         gstb = gpre;
         si = polynomial;
 
-        if strcmp(display,'on')
+        if strcmp(display,'on') && ~isempty(f2)
             fprintf('Local polynomial problem at iteration = %d\n',i1);
         end
     else
@@ -504,10 +548,9 @@ for i1=1:NstepBis
         save([logpath{:} sprintf('iter%d',i1)], '-struct', 'iteration');
     end
 end
-if strcmp(display,'on')
-    fprintf('---------------Ending V-s iteration.\n');
-end
-    
+fprintf('---------------Ending V-s iteration.\n');
+
+
 %% Outputs
 iter(biscount+1:end) = [];
 [~, idx] = max([iter.beta -1]);     % handle empty beta value(s)

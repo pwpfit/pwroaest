@@ -3,29 +3,103 @@ classdef pwroaoptions < conroaoptions
 %
 %% Usage & description
 %
-%   opts = pwroaoptions(f1, f2, phi, x, ...)
+%   opts = pwroaoptions(f1, f2, phi, x)
+%
+% Standard options for piecewise ROA estimation;
+%
+%   opts = pwroaoptions(f, x)
+%
+% Fall-back to single polynomial ROA estimation;
+%
+%   opts = pwroaoptions(..., u)
+%
+% Optional specification of control input;
+%
+%   opts = pwroaoptions(..., 'Name', Value, ...)
+%
+% Specifiy list of name-value pairs for additional options (see below).
 %
 % with inputs
-%       -f1:  first polynomial vector field
+%       -f,f1:  first (single) polynomial vector field
 %       -f2:  second polynomial vector field
-%       -x:   state-space vector as PVAR
 %       -phi: boundary condition (scalar field)
+%       -x:   state-space vector as PVAR
+%       -u:   optional input vector as PVAR
 %
-%   Name, Value:
-%       -xi: variables of boundary condition as PVAR; must be subset of the
-%            state-space variables. [default =  opts.x]
-%       -zi: Monomials for boundary multiplier in gamma-s2-si step of V-s 
-%            iteration. Specifically, zi is a column vector of monomials 
-%            used to specify si(xi) in the Gram matrix form, 
-%            si(xi)=zi(xi)'*C*zi(xi). [default =  monomials(xi, 1:2) ]
-%       -zVi:   Cell of monomials for multiple Lyapunov functions.
+%   Name, Value
+%       Basic options:
+%       -c:     constraints as polynomial vector field
+%       -Kin:   Initial control function [empty by default]
+%       -Ki0:   Cell of initial control functions [empty by default]
+%       -L1:    Margin to enforce positive definiteness of the Lyapunov
+%               function [default = 0]
+%       -L2:    Margin to enforce positive definiteness of the gradient of
+%               the Lyapunov function [default = 1e-6*x^2]
+%       -p:     Ellipsoidal shape [default = x'*x]
+%       -Q:     Positive definite matrix for initial linearized Lyapunov
+%               equation [see pwlinstab, default = 1]
+%       -tau:   sample time for discrete systems [default = 0]
+%       -Vin:   Initial Lyapunov function [empty by default]
+%       -Vi0:   Cell of initial multiple Lyapunov functions [empty by
+%               default]
+%       -u:  Control input vector (see above)
+%       -xi: Variables of boundary condition as PVAR; must be subset of the
+%            state-space variables. [default = opts.x] DEPRECATED
+%
+%       Monomial vectors:
+%       -z1: Monomials for shape multiplier in beta-s1 step
+%       -z2: Monomials for gradient multiplier in gamma-s2-[si] step
+%       -zi: Monomials for boundary multiplier in gamma-s2-si step
+%       -zg: Monomials for constraint multiplier
+%            Specifically, z* are column vectors of monomials used to 
+%            specify s*(x) in the Gram matrix form, s*(x)=z*(x)'*C*z*(x). 
+%            [default =  monomials(x, 1:2)]
+%
+%       -zK: Vector of monomials for control function;
+%       -zV: Vector of monomials for Lyapunov function;
+%            Specifically, zK, zV are column vectors of monomials used to
+%            specify K(x), V(x) in the vector form, V(x) = zV(x)'*C.
+%            [default: zV = monomials(x,2); zK empty]
+%
+%       Monomials can alternatively specified for each subdomain of a
+%       piecewise system:
+%       -z1i:   Cell of monomials for shape multipliers
+%       -z2i:   Cell of monomials for gradient multipliers
+%       -zgi:   Cell of monomials for constraint multipliers
+%       -zi:    Cell of monomials for boundary multipliers
+%       -zKi:   Cell of monomials for multiple control functions
+%       -zVi:   Cell of monomials for multiple Lyapunov functions
+%
+%       Advanced options:
+%       -NstepBis:  Number of bisection steps [default = 1]
+%       -betamax:   Maximum value of beta in beta-s1 step [default = 100]
+%       -gammamax:  Maximum value of gamma in gamma-s2 step [default = 100]
+%       -sosopt:    Options for feasibility steps [default = sosoptions]
+%       -gsosopt:   Options for bisection steps [default = gsosoptions]
+%                   See SOSOPTIONS and GSOSOPTIONS for more details.
+%
+%       Display, debug, and log
+%       -display:   Display information of each iteration step 
+%       -debug:     Display additional information during iteration
+%                   [allowable values: 'on' or 'off'; default = 'off']
+%       -log:       Save results to MAT files
+%                   [allowable values: 'result' (store only final result),
+%                   'step' (store results of each iteration step), or
+%                   'none' (don't store results); default = 'none']
+%       -logpath:   Specify path for result MAT files
+%                   [default = 'data/']
+%                   Note: the log path can be specified as character array
+%                   or cell vector of character arrays; the first (or only)
+%                   element is considered to be a folder. If this folder
+%                   does not exist yet, it is created; if it does exist,
+%                   any MAT files already stored inside is deleted.
 %
 %% About
 %
 % * Author:     Torbjoern Cunis
 % * Email:      <mailto:torbjoern.cunis@onera.fr>
 % * Created:    2018-05-22
-% * Changed:    2019-10-28
+% * Changed:    2019-11-01
 %
 %% See also
 %
@@ -62,7 +136,23 @@ properties
 end
 
 methods
-    function opt = pwroaoptions(f1, f2, phi, x, varargin)
+    function opt = pwroaoptions(f1, f2, varargin)
+        % pwroaoptions(f, x, [u], ...)
+        if ispvar(f2) && ...
+                (nargin < 3 || ispvar(varargin{1}) || ischar(varargin{1}))
+            % fall back to single ROA estimation
+            x = f2;
+            
+            phi = -Inf;
+            f2 = [];
+        else
+            phi = varargin{1};
+            x = varargin{2};
+            
+            varargin(1:2) = [];
+        end
+            
+        
         opt@conroaoptions(f1, x, varargin{:});
         
         opt.f1  = f1;

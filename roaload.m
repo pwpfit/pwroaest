@@ -78,7 +78,11 @@ end
 
 S = load([path{:} filename], '-mat');
 
-beta  = S.beta;
+if isfield(S, 'Ibar')
+    beta  = S.Ibar;
+else
+    beta  = S.beta;
+end
 V     = S.V;
 gamma = S.gamma;
 

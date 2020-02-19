@@ -3,7 +3,7 @@ classdef conroaoptions < droaoptions
 %
 %% Usage & description
 %
-%   opts = conroaoptions(f, g, x, [u], ...)
+%   opts = conroaoptions(f, x, [u], ...)
 %
 % with inputs
 %       -f: polynomial vector field

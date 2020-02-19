@@ -5,10 +5,10 @@ function [A,B,f0] = dplinearize(f,x,u,tau,x0,u0)
 % Error Checking
 if nargin==2
     %   [A,f0] = dplinearize(f,x)
-    u = [];
     x0 = [];
     u0 = [];
     tau = 0;
+    u = [];
 elseif nargin==3
     if ispvar(u)        
         %   [A,B,f0] = dplinearize(f,x,u)
@@ -17,10 +17,10 @@ elseif nargin==3
         tau = 0;
     else
         %   [A,f0] = dplinearize(f,x,tau)
-        u = [];
         x0 = [];
         u0 = [];
         tau = u;
+        u = [];
     end
 elseif nargin==4
     if ispvar(u)
@@ -29,10 +29,10 @@ elseif nargin==4
         u0 = [];
     elseif isempty(u)
         %   [A,f0] = dplinearize(f,x,[],x0)
-        u = [];
         x0 = tau;
         u0 = [];
         tau = 0;
+        u = [];
     else
         %   [A,f0] = dplinearize(f,x,tau,x0)
         x0 = tau;
