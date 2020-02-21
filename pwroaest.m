@@ -104,6 +104,13 @@ L1 = roaopts.L1;
 Q  = roaopts.Q;
 c  = roaopts.c;
 
+if isempty(p)
+    ellipsoid = false;
+    p = x'*x*.5e2;
+else
+    ellipsoid = true;
+end
+
 NstepBis = roaopts.NstepBis;
 sopts = roaopts.sosopts;
 gopts = roaopts.gsosopts;
@@ -170,9 +177,9 @@ for i1=1:NstepBis
     elseif isempty(zK{1})
         % nothing to do
         
-    elseif gpre <= gmin
+    elseif gpre < gmin
         % local K-V-s problem
-        K{1} = roaKstep(f1,c,p,x,u,zK{1},V{1},b,g,s0,s,sg,L1,L2,sopts);
+        K{1} = roaKstep(f1,c,p,x,u,zK{1},V{1},b,g,s0,s,sg,L1,L2,tau,sopts);
         if isempty(K{1})
             if strcmp(display,'on')
                 fprintf('local K-step infeasible at iteration = %d\n',i1);
@@ -182,7 +189,7 @@ for i1=1:NstepBis
             K{2} = K{1};
         end
     else
-        [K{:}] = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,roaopts);
+        [K{:}] = pwroaKstep(f1,f2,phi,c,p,x,u,zK,V,[b1 b2],g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
         if isempty(K{1})
             if strcmp(display,'on')
                 fprintf('common K-step infeasible at iteration = %d\n',i1);
@@ -222,9 +229,14 @@ for i1=1:NstepBis
             [V{:}]=pwlinstab(fK1,fK2,phi,x,tau);
         end
         
-    elseif gpre <= gmin
+    elseif gpre < gmin
         % local V-s problem
-        [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,tau,sopts);
+        if ~ellipsoid
+            s0 = sosdecvar('c1',z1{1});
+            [V{1},~] = conroavstep(fK1,cK{1},V{1},x,zV{1},g,g,s0,s,sg,L1,L2,tau,sopts);
+        else
+            [V{1},~] = conroavstep(fK1,cK{1},p,x,zV{1},b,g,s0,s,sg,L1,L2,tau,sopts);
+        end
         if isempty(V{1})
             if strcmp(display,'on')
                 fprintf('local V-step infeasible at iteration = %d\n',i1);
@@ -234,7 +246,12 @@ for i1=1:NstepBis
             V{2} = V{1};
         end
     else
-        [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
+        if ~ellipsoid
+            s0 = [sosdecvar('cs1',z1{1}); sosdecvar('cs2',z1{end})];
+            [V{:}] = pwroavstep(fK1,fK2,phi,cK,[V{:}],x,zV,g,g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
+        else
+            [V{:}] = pwroavstep(fK1,fK2,phi,cK,p,x,zV,[b1 b2],g,s0,s,si,sg,sj,L1,L2,tau,roaopts);
+        end
         if isempty(V{1})
             if strcmp(display,'on') && length(V) == 1
                 fprintf('common V-step infeasible at iteration = %d\n',i1);
@@ -267,7 +284,7 @@ for i1=1:NstepBis
         % {x:V(x) <= gamma} is contained in {x:phi(x)<=0}
         %======================================================================
         gopts.maxobj = gammamax;
-        [gbnds,~] = pcontain(phi,V{1},[],gopts);
+        [gbnds,~] = pcontain(phi,V{1},monomials(x,0:1),gopts);
         if isempty(gbnds)
             if strcmp(display,'on')
                 fprintf('min gamma step infeasible at iteration = %d\n',i1);
@@ -291,7 +308,7 @@ for i1=1:NstepBis
         gmin = [];
     end
     
-    if gpre <= gmin
+    if gpre < gmin
         % estimated region of attraction does not reach boundary
         gstb = gpre;
         si = polynomial;
@@ -359,7 +376,7 @@ for i1=1:NstepBis
         break;
     end 
     
-    if (length(V) == 1 && length(cK) == 1) || any(gpre <= gmin)
+    if (length(V) == 1 && length(cK) == 1) || any(gpre < gmin)
         %==================================================================
         % Constraint Step: Solve the following problem
         % {x: V(x) <= gamma} is contained in {x: c(x) <= 0}
@@ -381,6 +398,10 @@ for i1=1:NstepBis
         
         g = min([gstb, gcon]);
         
+        % store execution time before beta step
+        iteration.time = toc;
+        
+        if ~isempty(p)
         %======================================================================
         % Beta Step: Solve the following problem
         % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
@@ -396,6 +417,10 @@ for i1=1:NstepBis
             break;
         end
         b1 = bbnds(1);
+        else
+            s0 = [];
+            b1 = i1-NstepBis;
+        end
         
         b2 = [];
     else
@@ -438,6 +463,9 @@ for i1=1:NstepBis
         
         sg = [sg1 sg2];
         sj = [sj1 sj2];
+        
+        % store execution time before piecewise beta steps
+        iteration.time = toc;
         
         %======================================================================
         % Beta 1 Step: Solve the following problem
@@ -493,7 +521,7 @@ for i1=1:NstepBis
     end
     
     
-    if ~strcmp(roaopts.gammacheck, 'none') && gpre > gmin
+    if ~strcmp(roaopts.gammacheck, 'none') && gpre >= gmin
         %==============================================================
         % Gamma Check Step: Solve the following problems
         % {x:V(x) <= gamma} intersects {x:phi(x) <= 0} is contained 
@@ -542,7 +570,12 @@ for i1=1:NstepBis
     iteration.sg    = sg;
     iteration.sj    = sj;
     iteration.aux   = struct('gstb',gstb,'gcon',gcon,'gpre',gpre,'gmin',gmin);
-    iteration.time  = toc;
+    if ellipsoid
+        % store execution time after beta step(s)
+        % unless in set-inclusion mode
+        iteration.time  = toc;
+    end
+
     iter(i1) = iteration;
     if strcmp(log,'step')
         save([logpath{:} sprintf('iter%d',i1)], '-struct', 'iteration');
@@ -553,7 +586,7 @@ fprintf('---------------Ending V-s iteration.\n');
 
 %% Outputs
 iter(biscount+1:end) = [];
-[~, idx] = max([iter.beta -1]);     % handle empty beta value(s)
+[~, idx] = max([iter.beta -Inf]);     % handle empty beta value(s)
 result = iter(idx);
 beta  = result.beta;
 V     = result.V;

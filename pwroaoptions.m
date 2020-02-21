@@ -36,6 +36,12 @@ classdef pwroaoptions < conroaoptions
 %       -L2:    Margin to enforce positive definiteness of the gradient of
 %               the Lyapunov function [default = 1e-6*x^2]
 %       -p:     Ellipsoidal shape [default = x'*x]
+%               If p is an empty polynomial, a set-inclusion constraint is
+%               implemented in the V-step; here, the next Lyapunov function
+%               is constrained to include the previous region-of-attraction
+%               estimated rather than an ellipsoid shape. For comparison,
+%               the beta step is executed and logged for the unit ball but 
+%               not counted towards execution time.
 %       -Q:     Positive definite matrix for initial linearized Lyapunov
 %               equation [see pwlinstab, default = 1]
 %       -tau:   sample time for discrete systems [default = 0]

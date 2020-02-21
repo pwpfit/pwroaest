@@ -117,7 +117,12 @@ for i1=1:NstepBis;
             V = Vin;
         end
     else
-        [V,c] = roavstep(f,p,x,zV,b,g,s1,s2,L1,L2,sopts);
+        if isempty(p)
+            s1 = sosdecvar('c1',z1);
+            [V,c] = roavstep(f,V,x,zV,g,g,s1,s2,L1,L2,sopts);
+        else
+            [V,c] = roavstep(f,p,x,zV,b,g,s1,s2,L1,L2,sopts);
+        end
         if isempty(V)
             if strcmp(display,'on')
                 fprintf('V-step infeasible at iteration = %d\n',i1);
@@ -143,6 +148,7 @@ for i1=1:NstepBis;
     end
     g = gbnds(1);
     
+    if ~isempty(p)
     %======================================================================
     % Beta Step: Solve the following problem
     % {x: p(x)) <= beta} is contained in {x: V(x) <= gamma}
@@ -158,6 +164,10 @@ for i1=1:NstepBis;
         break;
     end
     b = bbnds(1);
+    else
+        s1 = [];
+        b = NStepBis-i1;
+    end
     
     % Print results and store iteration data
     if strcmp(display,'on')

@@ -136,9 +136,9 @@ else
     sosconstr{2} = V2 >= L1;
     
     % {x: p(x) <= b} intersects {x: phi(x) <= 0} is contained in {x: V1(x) <= g}
-    sosconstr{3} = -((V1-gamma) + s0(1)*(beta(1)-p)) >= 0;
+    sosconstr{3} = -((V1-gamma) + s0(1)*(beta(1)-p(1))) >= 0;
     % {x: p(x) <= b} intersects {x: phi(x) > 0} is contained in {x: V2(x) <= g}
-    sosconstr{4} = -((V2-gamma) + s0(2)*(beta(2)-p)) >= 0;
+    sosconstr{4} = -((V2-gamma) + s0(2)*(beta(end)-p(end))) >= 0;
     
     % {x: V(x) <= g} is contained in {x: grad(V)*f < 0}
     [Vdot1,R1] = ddiff(V1,x,tau,f1);
